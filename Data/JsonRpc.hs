@@ -1,13 +1,16 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module JsonRpc  ( JsonRpcVersion(JsonRpcV1 ,JsonRpcV2)
+module JsonRpc  ( JsonRpcVersion(JsonRpcV1, JsonRpcV2)
                 , JsonRpcRequest
                 , JsonRpcNotification
+                , JsonRpcError
                 , JsonRpcResponse
+                , parseJsonRpc
                 ) where
 
 import Data.ByteString.Lazy (ByteString)
 import Control.Applicative ((<$>), (<*>), empty)
+import Data.Either
 import Data.Aeson
 
 data JsonRpcVersion = JsonRpcV1 | JsonRpcV2
@@ -20,14 +23,22 @@ data JsonRpcRequest = JsonRpcRequest { jrpcVersion    :: JsonRpcVersion
                                      } deriving (Show)
 instance ToJSON JsonRpcRequest where
   toJSON (JsonRpcRequest version method params id) =
-    let l = [ "method" .= method , "params" .= params , "id" .= id ]
+    let l = [ "method" .= method, "params" .= params, "id" .= id ]
     in case version of
       JsonRpcV1 -> object l
       JsonRpcV2 -> object $ ("jsonrpc" .= toJSON ("2.0" :: ByteString)):l
-    
-data JsonRpcNotification = JsonRpcNotification { jrpcNtfMethod :: ByteString
-                                               , jrpcNtfParams :: [ByteString]
-                                               } deriving (Show)
+
+data JsonRpcNotification = JsonRpcNotification
+                                     { jrpcNtfVersion :: JsonRpcVersion
+                                     , jrpcNtfMethod  :: ByteString
+                                     , jrpcNtfParams  :: [ByteString]
+                                     } deriving (Show)
+instance ToJSON JsonRpcNotification where
+  toJSON (JsonRpcNotification version method params) =
+    let l = [ "method" .= method, "params" .= params ]
+    in case version of
+      JsonRpcV1 -> object l
+      JsonRpcV2 -> object $ ("jsonrpc" .= toJSON ("2.0" :: ByteString)):l
 
 data JsonRpcError = JsonRpcError { jrpcErrCode    :: Int
                                  , jrpcErrMessage :: ByteString
@@ -38,3 +49,6 @@ data JsonRpcResponse = JsonRpcResponse { jrpcRspResult :: Maybe Value
                                        , jrpcRspError  :: JsonRpcError
                                        , jrpcRspId     :: ByteString
                                        } deriving (Show)
+
+parseJsonRpc :: ByteString -> Either JsonRpcError JsonRpcResponse
+parseJsonRpc _ = Left $ JsonRpcError (-1) "someerror" Nothing
