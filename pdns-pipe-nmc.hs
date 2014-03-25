@@ -2,14 +2,18 @@
 
 module Main where
 
-import Control.Applicative
+--import Control.Applicative
 import Control.Monad
-import Control.Exception
+import Data.ByteString.Char8 (pack, unpack)
+import Data.ByteString.Lazy hiding (pack, unpack, putStrLn)
 import Data.ConfigFile
 import Data.Either.Utils
 import Data.List.Split
-import Data.Aeson (decode)
-import Network.JsonRpc.Client
+import Data.Aeson (encode, decode, Value(..))
+import Network.HTTP.Types
+-- does not exist -- import Network.HTTP.Client
+import Network.HTTP.Conduit
+import Data.JsonRpcClient
 import NmcJson
 
 confFile = "/etc/namecoin.conf"
@@ -19,7 +23,7 @@ confFile = "/etc/namecoin.conf"
 data Config = Config { rpcuser       :: String
                      , rpcpassword   :: String
                      , rpchost       :: String
-                     , rpcport       :: String
+                     , rpcport       :: Int
                      } deriving (Show)
 
 readConfig :: String -> IO Config
@@ -28,20 +32,32 @@ readConfig f = do
   return (Config { rpcuser       = getSetting cp "rpcuser"     ""
                  , rpcpassword   = getSetting cp "rpcpassword" ""
                  , rpchost       = getSetting cp "rpchost"     "localhost"
-                 , rpcport       = getSetting cp "rpcport"     "8336"
+                 , rpcport       = getSetting cp "rpcport"     8336
                  })
     where
       getSetting cp x dfl = case get cp "DEFAULT" x of
                               Left  _ -> dfl
                               Right x -> x
 
-uriConf = do
-  cfg <- readConfig confFile
-  return $ "http://" ++ rpcuser cfg ++ ":" ++ rpcpassword cfg ++
-               "@" ++ rpchost cfg ++ ":" ++ rpcport cfg ++ "/"
+-- HTTP/JsonRpc interface
+
+qReq cf q = applyBasicAuth (pack (rpcuser cf)) (pack (rpcpassword cf))
+          $ def { host           = (pack (rpchost cf))
+                , port           = (rpcport cf)
+                , method         = "PUT"
+                , requestHeaders = [ (hAccept,      "application/json")
+                                   , (hContentType, "application/json")
+                                   ]
+                , requestBody    = RequestBodyLBS $ encode $
+                                   JsonRpcRequest JsonRpcV1
+                                                  "name_show"
+                                                  [q]
+                                                  (String "pdns-nmc")
+                }
 
 -- NMC interface
 
+{-
 queryNmc :: String -> String -> RRType -> String -> IO (Either String NmcDom)
 queryNmc uri fqdn qtype qid = do
   case reverse  (splitOn "." fqdn) of
@@ -53,7 +69,7 @@ queryNmc uri fqdn qtype qid = do
         Just dom -> return $ Right dom
     _           ->
       return $ Left "Only \".bit\" domain is supported"
-
+-}
 -- PowerDNS ABI
 
 data RRType = RRTypeSRV   | RRTypeA   | RRTypeAAAA | RRTypeCNAME
@@ -113,6 +129,7 @@ pdnsParse ver s =
                                             })
       _                         -> Left s
 
+{-
 pdnsOut :: String -> Either String PdnsRequest -> IO ()
 pdnsOut _   (Left e)   = putStrLn ("ERROR\tUnparseable request: " ++ e)
 pdnsOut uri (Right rq) = case rq of
@@ -124,11 +141,12 @@ pdnsOut uri (Right rq) = case rq of
     PdnsRequestAXFR xfrreq ->
       putStrLn ("ERROR\t No support for AXFR " ++ xfrreq)
     PdnsRequestPing -> putStrLn "OK"
+-}
 
 -- Main entry
 
 main = do
-  uri <- uriConf
+  cfg <- readConfig confFile
   ver <- do
     let
       loopErr e = forever $ do
@@ -143,5 +161,10 @@ main = do
       ["HELO",  x ] -> loopErr $ "unsupported ABI version " ++ (show x)
       _             -> loopErr $ "bad HELO " ++ (show s)
 
+--  mgr <- newManager conduitManagerSettings
+
   putStrLn $ "OK\tDnsNmc ready to serve, protocol v." ++ (show ver)
-  forever $ getLine >>= (pdnsOut uri) . (pdnsParse ver)
+
+  print $ qReq cfg "samplequery"
+
+  --forever $ getLine >>= (pdnsOut uri) . (pdnsParse ver)
