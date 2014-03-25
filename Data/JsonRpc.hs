@@ -72,4 +72,11 @@ instance FromJSON JsonRpcResponse where
                                 ""
 
 parseJsonRpc :: (FromJSON a) => ByteString -> Either JsonRpcError a
-parseJsonRpc _ = Left $ JsonRpcError (-1) "someerror" Nothing
+parseJsonRpc s = case (decode s :: Maybe JsonRpcResponse) of
+  Just (JsonRpcResponse result error id) ->
+    case result of
+      Just v -> case (fromJSON v) of
+        Success a -> Right a
+        Error s   -> Left $ JsonRpcError (-32900) "Unparseable result" Nothing
+      Nothing -> Left error
+  Nothing -> Left $ JsonRpcError (-32800) "Unparseable response" Nothing
