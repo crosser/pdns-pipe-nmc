@@ -4,6 +4,7 @@ module Main where
 
 import Control.Applicative
 import Control.Monad
+import Control.Exception
 import Data.ConfigFile
 import Data.Either.Utils
 import Data.List.Split
@@ -24,15 +25,20 @@ data Config = Config { rpcuser       :: String
 readConfig :: String -> IO Config
 readConfig f = do
   cp <- return . forceEither =<< readfile emptyCP f
-  return (Config     { rpcuser       = getSetting cp "rpcuser"     ""
-                     , rpcpassword   = getSetting cp "rpcpassword" ""
-                     , rpchost       = getSetting cp "rpchost"     "localhost"
-                     , rpcport       = getSetting cp "rpcport"     "8336"
-                     })
+  return (Config { rpcuser       = getSetting cp "rpcuser"     ""
+                 , rpcpassword   = getSetting cp "rpcpassword" ""
+                 , rpchost       = getSetting cp "rpchost"     "localhost"
+                 , rpcport       = getSetting cp "rpcport"     "8336"
+                 })
     where
       getSetting cp x dfl = case get cp "DEFAULT" x of
-                              Left _  -> dfl
+                              Left  _ -> dfl
                               Right x -> x
+
+uriConf = do
+  cfg <- readConfig confFile
+  return $ "http://" ++ rpcuser cfg ++ ":" ++ rpcpassword cfg ++
+               "@" ++ rpchost cfg ++ ":" ++ rpcport cfg ++ "/"
 
 -- NMC interface
 
@@ -98,13 +104,13 @@ pdnsParse ver s =
       "PING":[]                 -> Right PdnsRequestPing
       "AXFR":x:[]               -> Right (PdnsRequestAXFR x)
       "Q":qn:"IN":qt:id:rip:xs  -> Right (PdnsRequestQ
-                                        { qName = qn
-                                        , qType = getQt qt
-                                        , iD = id
-                                        , remoteIpAddress = rip
-                                        , localIpAddress = getLIp ver xs
-                                        , ednsSubnetAddress = getRIp ver xs
-                                        })
+                                            { qName = qn
+                                            , qType = getQt qt
+                                            , iD = id
+                                            , remoteIpAddress = rip
+                                            , localIpAddress = getLIp ver xs
+                                            , ednsSubnetAddress = getRIp ver xs
+                                            })
       _                         -> Left s
 
 pdnsOut :: String -> Either String PdnsRequest -> IO ()
@@ -122,9 +128,7 @@ pdnsOut uri (Right rq) = case rq of
 -- Main entry
 
 main = do
-  cfg <- readConfig confFile
-  let uri = "http://" ++ rpcuser cfg ++ ":" ++ rpcpassword cfg ++
-            "@" ++ rpchost cfg ++ ":" ++ rpcport cfg ++ "/"
+  uri <- uriConf
   ver <- do
     let
       loopErr e = forever $ do
