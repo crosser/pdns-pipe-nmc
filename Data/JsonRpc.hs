@@ -3,8 +3,7 @@
 module JsonRpc  ( JsonRpcVersion(JsonRpcV1, JsonRpcV2)
                 , JsonRpcRequest
                 , JsonRpcNotification
-                , JsonRpcError
-                , JsonRpcResponse
+                , JsonRpcError(..)
                 , parseJsonRpc
                 ) where
 
@@ -44,11 +43,33 @@ data JsonRpcError = JsonRpcError { jrpcErrCode    :: Int
                                  , jrpcErrMessage :: ByteString
                                  , jrpcErrData    :: Maybe Value
                                  } deriving (Show)
+instance FromJSON JsonRpcError where
+  parseJSON (Object o) = JsonRpcError
+                                <$> o .: "code"
+                                <*> o .: "error"
+                                <*> o .: "data"
+  parseJSON x = return $ JsonRpcError
+                                (-32600)
+                                "Unparseable error object"
+                                Nothing
 
 data JsonRpcResponse = JsonRpcResponse { jrpcRspResult :: Maybe Value
                                        , jrpcRspError  :: JsonRpcError
                                        , jrpcRspId     :: ByteString
                                        } deriving (Show)
+instance FromJSON JsonRpcResponse where
+  parseJSON (Object o) = JsonRpcResponse
+                                <$> o .: "result"
+                                <*> o .: "error"
+                                <*> o .: "id"
+  parseJSON x = return $ JsonRpcResponse
+                                Nothing
+                                (JsonRpcError
+                                        (-32700)
+                                        "Unparseable response object"
+                                        Nothing
+                                )
+                                ""
 
-parseJsonRpc :: ByteString -> Either JsonRpcError JsonRpcResponse
+parseJsonRpc :: (FromJSON a) => ByteString -> Either JsonRpcError a
 parseJsonRpc _ = Left $ JsonRpcError (-1) "someerror" Nothing
