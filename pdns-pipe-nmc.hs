@@ -2,44 +2,22 @@
 
 module Main where
 
---import Control.Applicative
 import Control.Monad
 import qualified Data.ByteString.Char8 as C (pack, unpack)
 import qualified Data.ByteString.Lazy.Char8 as L (pack, unpack)
 import Data.ByteString.Lazy as BS hiding (reverse, putStrLn)
-import Data.ConfigFile
-import Data.Either.Utils
 import Data.List.Split
 import Data.Aeson (encode, decode, Value(..))
 import Network.HTTP.Types
 import Data.Conduit
 import Network.HTTP.Conduit
 import Data.JsonRpcClient
+
+import Config
 import PowerDns
 import NmcJson
 
 confFile = "/etc/namecoin.conf"
-
--- Config file handling
-
-data Config = Config { rpcuser       :: String
-                     , rpcpassword   :: String
-                     , rpchost       :: String
-                     , rpcport       :: Int
-                     } deriving (Show)
-
-readConfig :: String -> IO Config
-readConfig f = do
-  cp <- return . forceEither =<< readfile emptyCP f
-  return (Config { rpcuser       = getSetting cp "rpcuser"     ""
-                 , rpcpassword   = getSetting cp "rpcpassword" ""
-                 , rpchost       = getSetting cp "rpchost"     "localhost"
-                 , rpcport       = getSetting cp "rpcport"     8336
-                 })
-    where
-      getSetting cp x dfl = case get cp "DEFAULT" x of
-                              Left  _ -> dfl
-                              Right x -> x
 
 -- HTTP/JsonRpc interface
 
