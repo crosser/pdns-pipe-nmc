@@ -4,8 +4,9 @@ module Main where
 
 --import Control.Applicative
 import Control.Monad
-import Data.ByteString.Char8 (pack, unpack)
-import Data.ByteString.Lazy hiding (pack, unpack, putStrLn)
+import qualified Data.ByteString.Char8 as C (pack, unpack)
+import qualified Data.ByteString.Lazy.Char8 as L (pack, unpack)
+import Data.ByteString.Lazy as BS hiding (reverse, putStrLn)
 import Data.ConfigFile
 import Data.Either.Utils
 import Data.List.Split
@@ -14,6 +15,7 @@ import Network.HTTP.Types
 import Data.Conduit
 import Network.HTTP.Conduit
 import Data.JsonRpcClient
+import PowerDns
 import NmcJson
 
 confFile = "/etc/namecoin.conf"
@@ -41,109 +43,44 @@ readConfig f = do
 
 -- HTTP/JsonRpc interface
 
-qReq cf q = applyBasicAuth (pack (rpcuser cf)) (pack (rpcpassword cf))
-          $ def { host           = (pack (rpchost cf))
-                , port           = (rpcport cf)
-                , method         = "PUT"
-                , requestHeaders = [ (hAccept,      "application/json")
-                                   , (hContentType, "application/json")
-                                   , (hConnection,  "Keep-Alive")
-                                   ]
-                , requestBody    = RequestBodyLBS $ encode $
-                                   JsonRpcRequest JsonRpcV1
-                                                  "name_show"
-                                                  [q]
-                                                  (String "pdns-nmc")
-                , checkStatus    = \_ _ _ -> Nothing
-                }
+qReq :: Config -> ByteString -> ByteString -> Request m
+qReq cf q id = applyBasicAuth (C.pack (rpcuser cf)) (C.pack (rpcpassword cf))
+             $ def { host           = (C.pack (rpchost cf))
+                   , port           = (rpcport cf)
+                   , method         = "PUT"
+                   , requestHeaders = [ (hAccept,      "application/json")
+                                      , (hContentType, "application/json")
+                                      , (hConnection,  "Keep-Alive")
+                                      ]
+                   , requestBody    = RequestBodyLBS $ encode $
+                                      JsonRpcRequest JsonRpcV1
+                                                     "name_show"
+                                                     [q]
+                                                     (String "pdns-nmc")
+                   , checkStatus    = \_ _ _ -> Nothing
+                   }
+
+qRsp :: Response ByteString -> Either String NmcDom
+qRsp rsp =
+    case parseJsonRpc (responseBody rsp) :: Either JsonRpcError NmcRes of
+      Left  jerr -> Left $ "Unparseable response: " ++ (show (responseBody rsp))
+      Right jrsp ->
+        case decode (resValue jrsp) :: Maybe NmcDom of
+          Nothing  -> Left $ "Unparseable value: " ++ (show (resValue jrsp))
+          Just dom -> Right dom
 
 -- NMC interface
 
-{-
-queryNmc :: String -> String -> RRType -> String -> IO (Either String NmcDom)
-queryNmc uri fqdn qtype qid = do
-  case reverse  (splitOn "." fqdn) of
+queryNmc :: Manager -> Config -> String -> RRType -> String
+         -> IO (Either String NmcDom)
+queryNmc mgr cfg fqdn qtype qid = do
+  case reverse (splitOn "." fqdn) of
     "bit":dn:xs -> do
-      ans <- detailledRemote Version1 [] uri "name_show" $ "d/" ++ dn
-      let mdom = decode (resValue ans) :: Maybe NmcDom
-      case mdom of
-        Nothing  -> return $ Left ("Unparseable: " ++ (show (resValue ans)))
-        Just dom -> return $ Right dom
+      rsp <- runResourceT $
+             httpLbs (qReq cfg (L.pack ("d/" ++ dn)) (L.pack qid)) mgr
+      return $ qRsp rsp
     _           ->
       return $ Left "Only \".bit\" domain is supported"
--}
--- PowerDNS ABI
-
-data RRType = RRTypeSRV   | RRTypeA   | RRTypeAAAA | RRTypeCNAME
-            | RRTypeDNAME | RRTypeSOA | RRTypeRP   | RRTypeLOC
-            | RRTypeNS    | RRTypeDS
-            | RRTypeANY   | RRTypeError String 
-        deriving (Show)
-
-data PdnsRequest = PdnsRequestQ
-                   { qName              :: String
-                   , qType              :: RRType
-                   , iD                 :: String
-                   , remoteIpAddress    :: String
-                   , localIpAddress     :: Maybe String
-                   , ednsSubnetAddress  :: Maybe String
-                   }
-                 | PdnsRequestAXFR String
-                 | PdnsRequestPing
-        deriving (Show)
-
-pdnsParse ver s =
-  let
-    getQt qt = case qt of
-      "SRV"     -> RRTypeSRV   
-      "A"       -> RRTypeA
-      "AAAA"    -> RRTypeAAAA
-      "CNAME"   -> RRTypeCNAME
-      "DNAME"   -> RRTypeDNAME 
-      "SOA"     -> RRTypeSOA 
-      "RP"      -> RRTypeRP   
-      "LOC"     -> RRTypeLOC
-      "NS"      -> RRTypeNS    
-      "DS"      -> RRTypeDS
-      "ANY"     -> RRTypeANY
-      _         -> RRTypeError qt
-    getLIp ver xs
-      | ver >= 2  = case xs of
-                      x:_       -> Just x
-                      _         -> Nothing
-      | otherwise = Nothing
-    getRIp ver xs
-      | ver >= 3  = case xs of
-                      _:x:_     -> Just x
-                      _         -> Nothing
-      | otherwise = Nothing
-  in
-    case words s of
-      "PING":[]                 -> Right PdnsRequestPing
-      "AXFR":x:[]               -> Right (PdnsRequestAXFR x)
-      "Q":qn:"IN":qt:id:rip:xs  -> Right (PdnsRequestQ
-                                            { qName = qn
-                                            , qType = getQt qt
-                                            , iD = id
-                                            , remoteIpAddress = rip
-                                            , localIpAddress = getLIp ver xs
-                                            , ednsSubnetAddress = getRIp ver xs
-                                            })
-      _                         -> Left s
-
-{-
-pdnsOut :: String -> Either String PdnsRequest -> IO ()
-pdnsOut _   (Left e)   = putStrLn ("ERROR\tUnparseable request: " ++ e)
-pdnsOut uri (Right rq) = case rq of
-    PdnsRequestQ qn qt id lip rip eip -> do
-      dom <- queryNmc uri qn qt id
-      case dom of
-        Left  e      -> putStrLn ("ERROR\tNmc query error: " ++ e)
-        Right result -> print result
-    PdnsRequestAXFR xfrreq ->
-      putStrLn ("ERROR\t No support for AXFR " ++ xfrreq)
-    PdnsRequestPing -> putStrLn "OK"
--}
 
 -- Main entry
 
@@ -169,8 +106,8 @@ main = do
 
   mgr <- newManager def
 
-  print $ qReq cfg "d/nosuchdomain"
-  rsp <- runResourceT $ httpLbs (qReq cfg "d/nosuchdomain") mgr
+  print $ qReq cfg "d/nosuchdomain" "query-nmc"
+  rsp <- runResourceT $ httpLbs (qReq cfg "d/nosuchdomain" "query-nmc") mgr
   print $ (statusCode . responseStatus) rsp
   putStrLn "===== complete response is:"
   print rsp
