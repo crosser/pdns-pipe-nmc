@@ -11,8 +11,8 @@ import Data.Aeson (encode, decode, Value(..))
 import Network.HTTP.Types
 import Data.Conduit
 import Network.HTTP.Conduit
-import Data.JsonRpcClient
 
+import JsonRpcClient
 import Config
 import PowerDns
 import NmcJson

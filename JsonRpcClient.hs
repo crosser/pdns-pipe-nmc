@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Data.JsonRpcClient
+module JsonRpcClient
                 ( JsonRpcVersion(JsonRpcV1, JsonRpcV2)
                 , JsonRpcRequest(..)
                 , JsonRpcNotification
