@@ -46,9 +46,9 @@ data JsonRpcError = JsonRpcError { jrpcErrCode    :: Int
                                  } deriving (Show)
 instance FromJSON JsonRpcError where
   parseJSON (Object o) = JsonRpcError
-                                <$> o .: "code"
-                                <*> o .: "error"
-                                <*> o .: "data"
+                                <$> o .:  "code"
+                                <*> o .:  "message"
+                                <*> o .:? "data"
   parseJSON x = return $ JsonRpcError
                                 (-32600)
                                 "Unparseable error object"
@@ -60,9 +60,9 @@ data JsonRpcResponse = JsonRpcResponse { jrpcRspResult :: Maybe Value
                                        } deriving (Show)
 instance FromJSON JsonRpcResponse where
   parseJSON (Object o) = JsonRpcResponse
-                                <$> o .: "result"
-                                <*> o .: "error"
-                                <*> o .: "id"
+                                <$> o .:? "result"
+                                <*> o .:  "error"
+                                <*> o .:  "id"
   parseJSON x = return $ JsonRpcResponse
                                 Nothing
                                 (JsonRpcError

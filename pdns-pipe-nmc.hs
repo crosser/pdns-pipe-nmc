@@ -47,12 +47,14 @@ qReq cf q = applyBasicAuth (pack (rpcuser cf)) (pack (rpcpassword cf))
                 , method         = "PUT"
                 , requestHeaders = [ (hAccept,      "application/json")
                                    , (hContentType, "application/json")
+                                   , (hConnection,  "Keep-Alive")
                                    ]
                 , requestBody    = RequestBodyLBS $ encode $
                                    JsonRpcRequest JsonRpcV1
                                                   "name_show"
                                                   [q]
                                                   (String "pdns-nmc")
+                , checkStatus    = \_ _ _ -> Nothing
                 }
 
 -- NMC interface
@@ -167,8 +169,17 @@ main = do
 
   mgr <- newManager def
 
-  print $ qReq cfg "d/dot-bit"
-  rsp <- runResourceT $ httpLbs (qReq cfg "d/dot-bit") mgr
+  print $ qReq cfg "d/nosuchdomain"
+  rsp <- runResourceT $ httpLbs (qReq cfg "d/nosuchdomain") mgr
+  print $ (statusCode . responseStatus) rsp
+  putStrLn "===== complete response is:"
   print rsp
+  let rbody = responseBody rsp
+  putStrLn "===== response body is:"
+  print rbody
+  let result = parseJsonRpc rbody :: Either JsonRpcError NmcRes
+  putStrLn "===== parsed response is:"
+  print result
+--  print $ parseJsonRpc (responseBody rsp)
 
   --forever $ getLine >>= (pdnsOut uri) . (pdnsParse ver)
