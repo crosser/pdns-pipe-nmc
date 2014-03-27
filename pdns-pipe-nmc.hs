@@ -11,7 +11,7 @@ import Data.Either.Utils
 import Data.List.Split
 import Data.Aeson (encode, decode, Value(..))
 import Network.HTTP.Types
--- does not exist -- import Network.HTTP.Client
+import Data.Conduit
 import Network.HTTP.Conduit
 import Data.JsonRpcClient
 import NmcJson
@@ -146,7 +146,9 @@ pdnsOut uri (Right rq) = case rq of
 -- Main entry
 
 main = do
+
   cfg <- readConfig confFile
+
   ver <- do
     let
       loopErr e = forever $ do
@@ -161,10 +163,12 @@ main = do
       ["HELO",  x ] -> loopErr $ "unsupported ABI version " ++ (show x)
       _             -> loopErr $ "bad HELO " ++ (show s)
 
---  mgr <- newManager conduitManagerSettings
-
   putStrLn $ "OK\tDnsNmc ready to serve, protocol v." ++ (show ver)
 
-  print $ qReq cfg "samplequery"
+  mgr <- newManager def
+
+  print $ qReq cfg "d/dot-bit"
+  rsp <- runResourceT $ httpLbs (qReq cfg "d/dot-bit") mgr
+  print rsp
 
   --forever $ getLine >>= (pdnsOut uri) . (pdnsParse ver)
