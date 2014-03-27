@@ -83,18 +83,17 @@ main = do
   putStrLn $ "OK\tDnsNmc ready to serve, protocol v." ++ (show ver)
 
   mgr <- newManager def
-
-  print $ qReq cfg "d/nosuchdomain" "query-nmc"
-  rsp <- runResourceT $ httpLbs (qReq cfg "d/nosuchdomain" "query-nmc") mgr
-  print $ (statusCode . responseStatus) rsp
-  putStrLn "===== complete response is:"
-  print rsp
-  let rbody = responseBody rsp
-  putStrLn "===== response body is:"
-  print rbody
-  let result = parseJsonRpc rbody :: Either JsonRpcError NmcRes
-  putStrLn "===== parsed response is:"
-  print result
---  print $ parseJsonRpc (responseBody rsp)
-
-  --forever $ getLine >>= (pdnsOut uri) . (pdnsParse ver)
+  forever $ do
+    l <- getLine
+    case pdnsParse ver l of
+      Left e -> putStrLn $ "ERROR\t" ++ e
+      Right preq -> do
+        case preq of
+          PdnsRequestQ qn qt id lip rip eip -> do
+            ncres <- queryNmc mgr cfg (qName preq) (qType preq) (iD preq)
+            case ncres of
+              Left  e   -> putStrLn $ "ERROR\t" ++ e
+              Right dom -> putStrLn $ pdnsOut dom
+          PdnsRequestAXFR xfrreq ->
+            putStrLn ("ERROR\t No support for AXFR " ++ xfrreq)
+          PdnsRequestPing -> putStrLn "OK"

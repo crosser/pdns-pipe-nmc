@@ -98,14 +98,3 @@ instance FromJSON NmcRes where
                 <*> o .: "address"
                 <*> o .: "expires_in"
         parseJSON _ = empty
-
-main = do
-  let l = "{\"name\":\"d/dot-bit\",\"value\":\"{\\\"info\\\":{\\\"description\\\":\\\"Dot-BIT Project - Official Website\\\",\\\"registrar\\\":\\\"http://register.dot-bit.org\\\"},\\\"fingerprint\\\":[\\\"30:B0:60:94:32:08:EC:F5:BE:DF:F4:BB:EE:52:90:2C:5D:47:62:46\\\"],\\\"ns\\\":[\\\"ns0.web-sweet-web.net\\\",\\\"ns1.web-sweet-web.net\\\"],\\\"map\\\":{\\\"\\\":{\\\"ns\\\":[\\\"ns0.web-sweet-web.net\\\",\\\"ns1.web-sweet-web.net\\\"]}},\\\"email\\\":\\\"register@dot-bit.org\\\"}\",\"txid\":\"7412603f2e6c3459be56accc6e1f3646b603f3d4a4188119a4072f125c1340d5\",\"address\":\"Mw3KCQcqC44nm75w7r79ZifZbEqT8RetWn\",\"expires_in\":18915}"
-  let r = decode l :: Maybe NmcRes
-  case r of
-    Just resp -> do
-      let value = (resValue resp)
-      let dom = decode value :: Maybe NmcDom
-      print dom
-    Nothing   ->
-      print "Unparseable NMC response"

@@ -1,4 +1,10 @@
-module PowerDns where
+module PowerDns ( RRType
+                , PdnsRequest(..)
+                , pdnsParse
+                , pdnsOut
+                ) where
+
+import NmcJson
 
 data RRType = RRTypeSRV   | RRTypeA   | RRTypeAAAA | RRTypeCNAME
             | RRTypeDNAME | RRTypeSOA | RRTypeRP   | RRTypeLOC
@@ -57,16 +63,5 @@ pdnsParse ver s =
                                             })
       _                         -> Left s
 
-{-
-pdnsOut :: String -> Either String PdnsRequest -> IO ()
-pdnsOut _   (Left e)   = putStrLn ("ERROR\tUnparseable request: " ++ e)
-pdnsOut uri (Right rq) = case rq of
-    PdnsRequestQ qn qt id lip rip eip -> do
-      dom <- queryNmc uri qn qt id
-      case dom of
-        Left  e      -> putStrLn ("ERROR\tNmc query error: " ++ e)
-        Right result -> print result
-    PdnsRequestAXFR xfrreq ->
-      putStrLn ("ERROR\t No support for AXFR " ++ xfrreq)
-    PdnsRequestPing -> putStrLn "OK"
--}
+pdnsOut :: NmcDom -> String
+pdnsOut d = show d
