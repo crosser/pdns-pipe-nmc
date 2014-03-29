@@ -64,7 +64,7 @@ pdnsParse ver s =
       _                         -> Left $ "Unparseable PDNS Request: " ++ s
 
 pdnsOut :: Int -> RRType -> Either String NmcDom -> String
-pdnsOut ver _ d =
-  case d of
+pdnsOut ver rrtype edom =
+  case edom of
     Left  err -> "LOG Error: " ++ err ++ "\nFAIL\n"
     Right dom -> "DATA\n" ++ (show dom) ++ "\nEND\n" --FIXME

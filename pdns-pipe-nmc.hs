@@ -55,7 +55,7 @@ qRsp rsp =
 
 -- NMC interface
 
-descend subdom dom = dom
+descend subdom dom = dom --FIXME
 
 queryNmc :: Manager -> Config -> String -> String
          -> IO (Either String NmcDom)
