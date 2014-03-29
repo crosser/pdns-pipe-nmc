@@ -61,7 +61,7 @@ pdnsParse ver s =
                                             , localIpAddress = getLIp ver xs
                                             , ednsSubnetAddress = getRIp ver xs
                                             })
-      _                         -> Left s
+      _                         -> Left $ "Unparseable PDNS Request: " ++ s
 
-pdnsOut :: NmcDom -> String
-pdnsOut d = show d
+pdnsOut :: RRType -> NmcDom -> String
+pdnsOut _ d = show d

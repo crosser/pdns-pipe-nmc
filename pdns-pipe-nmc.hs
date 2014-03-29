@@ -49,9 +49,9 @@ qRsp rsp =
 
 -- NMC interface
 
-queryNmc :: Manager -> Config -> String -> RRType -> String
+queryNmc :: Manager -> Config -> String -> String
          -> IO (Either String NmcDom)
-queryNmc mgr cfg fqdn qtype qid = do
+queryNmc mgr cfg fqdn qid = do
   case reverse (splitOn "." fqdn) of
     "bit":dn:xs -> do
       rsp <- runResourceT $
@@ -89,11 +89,11 @@ main = do
       Left e -> putStrLn $ "ERROR\t" ++ e
       Right preq -> do
         case preq of
-          PdnsRequestQ qn qt id lip rip eip -> do
-            ncres <- queryNmc mgr cfg (qName preq) (qType preq) (iD preq)
+          PdnsRequestQ qname qtype id _ _ _ -> do
+            ncres <- queryNmc mgr cfg qname id
             case ncres of
               Left  e   -> putStrLn $ "ERROR\t" ++ e
-              Right dom -> putStrLn $ pdnsOut dom
+              Right dom -> putStrLn $ pdnsOut qtype dom
           PdnsRequestAXFR xfrreq ->
-            putStrLn ("ERROR\t No support for AXFR " ++ xfrreq)
+            putStrLn ("ERROR\tNo support for AXFR " ++ xfrreq)
           PdnsRequestPing -> putStrLn "OK"
