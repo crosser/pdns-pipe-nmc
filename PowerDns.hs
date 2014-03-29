@@ -1,4 +1,4 @@
-module PowerDns ( RRType
+module PowerDns ( RRType(..)
                 , PdnsRequest(..)
                 , pdnsParse
                 , pdnsOut

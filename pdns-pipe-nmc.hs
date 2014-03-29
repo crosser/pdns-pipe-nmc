@@ -100,3 +100,13 @@ main = do
           PdnsRequestAXFR xfrreq ->
             putStrLn ("ERROR\tNo support for AXFR " ++ xfrreq)
           PdnsRequestPing -> putStrLn "OK"
+
+-- for testing
+
+ask str = do
+  cfg <- readConfig confFile
+  mgr <- newManager def
+  ncres <- queryNmc mgr cfg str "test-req-id"
+  case ncres of
+    Left  e   -> putStrLn $ "ERROR\t" ++ e
+    Right dom -> putStrLn $ pdnsOut RRTypeANY dom
