@@ -43,9 +43,12 @@ qRsp rsp =
     case parseJsonRpc (responseBody rsp) :: Either JsonRpcError NmcRes of
       Left  jerr -> Left $ "Unparseable response: " ++ (show (responseBody rsp))
       Right jrsp ->
-        case decode (resValue jrsp) :: Maybe NmcDom of
-          Nothing  -> Left $ "Unparseable value: " ++ (show (resValue jrsp))
-          Just dom -> Right dom
+        case resValue jrsp of
+          "" -> Right emptyNmcDom
+          vstr ->
+            case decode vstr :: Maybe NmcDom of
+              Nothing  -> Left $ "Unparseable value: " ++ (show vstr)
+              Just dom -> Right dom
 
 -- NMC interface
 

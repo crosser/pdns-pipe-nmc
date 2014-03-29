@@ -2,6 +2,7 @@
 
 module NmcJson  ( NmcRes(..)
                 , NmcDom
+                , emptyNmcDom
                 ) where
 
 import Data.ByteString.Lazy (ByteString)
@@ -28,7 +29,7 @@ instance FromJSON NmcRRService where
                 <*> o .: "host"
         parseJSON _ = empty
 
-data NmcRRI2p = NmcRRI2p -- unused
+data NmcRRI2p = NmcRRI2p
                         { i2pDestination :: String
                         , i2pName        :: String
                         , i2pB32         :: String
@@ -84,8 +85,12 @@ instance FromJSON NmcDom where
                 <*> o .:? "ds"
         parseJSON _ = empty
 
+emptyNmcDom = NmcDom Nothing Nothing Nothing Nothing Nothing Nothing
+                     Nothing Nothing Nothing Nothing Nothing Nothing
+                     Nothing Nothing Nothing Nothing Nothing Nothing
+
 data NmcRes = NmcRes    { resName       :: String
-                        , resValue      :: ByteString -- NmcDom
+                        , resValue      :: ByteString -- string with NmcDom
                         , resTxid       :: String
                         , resAddress    :: String
                         , resExpires_in :: Int
