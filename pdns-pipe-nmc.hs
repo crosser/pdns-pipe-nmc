@@ -41,7 +41,10 @@ qReq cf q id = applyBasicAuth (C.pack (rpcuser cf)) (C.pack (rpcpassword cf))
 qRsp :: Response ByteString -> Either String NmcDom
 qRsp rsp =
     case parseJsonRpc (responseBody rsp) :: Either JsonRpcError NmcRes of
-      Left  jerr -> Left $ "Unparseable response: " ++ (show (responseBody rsp))
+      Left  jerr -> 
+        case (jrpcErrCode jerr) of
+          -4 -> Right emptyNmcDom
+          _  -> Left $ "JsonRpc error response: " ++ (show jerr)
       Right jrsp ->
         case resValue jrsp of
           "" -> Right emptyNmcDom
