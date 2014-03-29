@@ -5,7 +5,7 @@ module Main where
 import Control.Monad
 import qualified Data.ByteString.Char8 as C (pack, unpack)
 import qualified Data.ByteString.Lazy.Char8 as L (pack, unpack)
-import Data.ByteString.Lazy as BS hiding (reverse, putStrLn)
+import Data.ByteString.Lazy as BS hiding (reverse, putStr, putStrLn)
 import Data.List.Split
 import Data.Aeson (encode, decode, Value(..))
 import Network.HTTP.Types
@@ -55,6 +55,8 @@ qRsp rsp =
 
 -- NMC interface
 
+descend subdom dom = dom
+
 queryNmc :: Manager -> Config -> String -> String
          -> IO (Either String NmcDom)
 queryNmc mgr cfg fqdn qid = do
@@ -62,7 +64,9 @@ queryNmc mgr cfg fqdn qid = do
     "bit":dn:xs -> do
       rsp <- runResourceT $
              httpLbs (qReq cfg (L.pack ("d/" ++ dn)) (L.pack qid)) mgr
-      return $ qRsp rsp
+      return $ case qRsp rsp of
+        Left  err -> Left err
+        Right dom -> Right $ descend xs dom
     _           ->
       return $ Left "Only \".bit\" domain is supported"
 
@@ -92,24 +96,18 @@ main = do
   forever $ do
     l <- getLine
     case pdnsParse ver l of
-      Left e -> putStrLn $ "ERROR\t" ++ e
+      Left e -> putStrLn $ "FAIL\t" ++ e
       Right preq -> do
         case preq of
-          PdnsRequestQ qname qtype id _ _ _ -> do
-            ncres <- queryNmc mgr cfg qname id
-            case ncres of
-              Left  e   -> putStrLn $ "ERROR\t" ++ e
-              Right dom -> putStrLn $ pdnsOut qtype dom
+          PdnsRequestQ qname qtype id _ _ _ ->
+            queryNmc mgr cfg qname id >>= putStr . (pdnsOut ver qtype)
           PdnsRequestAXFR xfrreq ->
-            putStrLn ("ERROR\tNo support for AXFR " ++ xfrreq)
-          PdnsRequestPing -> putStrLn "OK"
+            putStrLn ("FAIL\tNo support for AXFR " ++ xfrreq)
+          PdnsRequestPing -> putStrLn "END"
 
 -- for testing
 
 ask str = do
   cfg <- readConfig confFile
   mgr <- newManager def
-  ncres <- queryNmc mgr cfg str "test-req-id"
-  case ncres of
-    Left  e   -> putStrLn $ "ERROR\t" ++ e
-    Right dom -> putStrLn $ pdnsOut RRTypeANY dom
+  queryNmc mgr cfg str "test-req-id" >>= putStr . (pdnsOut 1 RRTypeANY)
