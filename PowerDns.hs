@@ -1,6 +1,7 @@
 module PowerDns ( RRType(..)
                 , PdnsRequest(..)
                 , pdnsParse
+                , pdnsReport
                 , pdnsOut
                 ) where
 
@@ -63,8 +64,16 @@ pdnsParse ver s =
                                             })
       _                         -> Left $ "Unparseable PDNS Request: " ++ s
 
-pdnsOut :: Int -> RRType -> Either String NmcDom -> String
-pdnsOut ver rrtype edom =
+pdnsReport :: String -> String
+pdnsReport err =
+  "LOG\tError: " ++ err ++ "\nFAIL\n"
+
+pdnsOut :: Int -> String -> RRType -> Either String NmcDom -> String
+pdnsOut ver id rrtype edom =
   case edom of
-    Left  err -> "LOG Error: " ++ err ++ "\nFAIL\n"
-    Right dom -> "DATA\n" ++ (show dom) ++ "\nEND\n" --FIXME
+    Left  err -> pdnsReport err
+    Right dom -> pdnsAmend ver id rrtype dom "END\n"
+
+pdnsAmend :: Int -> String -> RRType -> NmcDom -> String -> String
+pdnsAmend ver id rrtype dom accum =
+  "DATA\t" ++ (show dom) ++ "\n" ++ accum --FIXME

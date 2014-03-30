@@ -96,13 +96,13 @@ main = do
   forever $ do
     l <- getLine
     case pdnsParse ver l of
-      Left e -> putStrLn $ "FAIL\t" ++ e
+      Left e -> putStr $ pdnsReport e
       Right preq -> do
         case preq of
           PdnsRequestQ qname qtype id _ _ _ ->
-            queryNmc mgr cfg qname id >>= putStr . (pdnsOut ver qtype)
+            queryNmc mgr cfg qname id >>= putStr . (pdnsOut ver id qtype)
           PdnsRequestAXFR xfrreq ->
-            putStrLn ("FAIL\tNo support for AXFR " ++ xfrreq)
+            putStr $ pdnsReport ("No support for AXFR " ++ xfrreq)
           PdnsRequestPing -> putStrLn "END"
 
 -- for testing
@@ -110,4 +110,4 @@ main = do
 ask str = do
   cfg <- readConfig confFile
   mgr <- newManager def
-  queryNmc mgr cfg str "test-req-id" >>= putStr . (pdnsOut 1 RRTypeANY)
+  queryNmc mgr cfg str "askid" >>= putStr . (pdnsOut 1 "askid" RRTypeANY)
