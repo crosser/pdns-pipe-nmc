@@ -93,16 +93,17 @@ nmc2pdns name RRTypeAAAA  dom = mapto name "AAAA" $ domIp6 dom
 nmc2pdns name RRTypeCNAME dom = takejust name "CNAME" $ domAlias dom
 nmc2pdns name RRTypeDNAME dom = takejust name "DNAME" $ domTranslate dom
 nmc2pdns name RRTypeSOA   dom =
-  let
-    email = case domEmail dom of
-      Nothing   -> "hostmaster." ++ name
-      Just addr ->
-        let (aname, adom) = break (== '@') addr
-        in case adom of
-          "" -> aname
-          _  -> aname ++ "." ++ (tail adom)
-  in
-    [(name, "SOA", email ++ " 99999999 10800 3600 604800 86400")]
+  if dom == emptyNmcDom then []
+  else
+    let
+      email = case domEmail dom of
+        Nothing   -> "hostmaster." ++ name
+        Just addr ->
+          let (aname, adom) = break (== '@') addr
+          in case adom of
+            "" -> aname
+            _  -> aname ++ "." ++ (tail adom)
+    in [(name, "SOA", email ++ " 99999999 10800 3600 604800 86400")]
 nmc2pdns name RRTypeRP    dom = [] --FIXME
 nmc2pdns name RRTypeLOC   dom = takejust name "LOC" $ domLoc dom
 nmc2pdns name RRTypeNS    dom = mapto name "NS" $ domNs dom

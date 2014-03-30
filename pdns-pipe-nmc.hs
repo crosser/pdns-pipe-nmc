@@ -55,8 +55,6 @@ qRsp rsp =
 
 -- NMC interface
 
-descend subdom dom = dom --FIXME
-
 queryNmc :: Manager -> Config -> String -> String
          -> IO (Either String NmcDom)
 queryNmc mgr cfg fqdn qid = do
@@ -66,7 +64,7 @@ queryNmc mgr cfg fqdn qid = do
              httpLbs (qReq cfg (L.pack ("d/" ++ dn)) (L.pack qid)) mgr
       return $ case qRsp rsp of
         Left  err -> Left err
-        Right dom -> Right $ descend xs dom
+        Right dom -> Right $ descendNmc xs dom
     _           ->
       return $ Left "Only \".bit\" domain is supported"
 
