@@ -100,7 +100,7 @@ main = do
       Right preq -> do
         case preq of
           PdnsRequestQ qname qtype id _ _ _ ->
-            queryNmc mgr cfg qname id >>= putStr . (pdnsOut ver id qtype)
+            queryNmc mgr cfg qname id >>= putStr . (pdnsOut ver id qname qtype)
           PdnsRequestAXFR xfrreq ->
             putStr $ pdnsReport ("No support for AXFR " ++ xfrreq)
           PdnsRequestPing -> putStrLn "END"
@@ -110,4 +110,4 @@ main = do
 ask str = do
   cfg <- readConfig confFile
   mgr <- newManager def
-  queryNmc mgr cfg str "askid" >>= putStr . (pdnsOut 1 "askid" RRTypeANY)
+  queryNmc mgr cfg str "askid" >>= putStr . (pdnsOut 1 "askid" str RRTypeANY)

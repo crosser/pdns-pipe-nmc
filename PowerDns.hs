@@ -68,12 +68,50 @@ pdnsReport :: String -> String
 pdnsReport err =
   "LOG\tError: " ++ err ++ "\nFAIL\n"
 
-pdnsOut :: Int -> String -> RRType -> Either String NmcDom -> String
-pdnsOut ver id rrtype edom =
+pdnsOut :: Int -> String -> String -> RRType -> Either String NmcDom -> String
+pdnsOut ver id name rrtype edom =
   case edom of
     Left  err -> pdnsReport err
-    Right dom -> pdnsAmend ver id rrtype dom "END\n"
+    Right dom -> foldr addLine "END\n" $ nmc2pdns name rrtype dom
+      where
+        addLine (nm, ty, dt) accum =
+          "DATA\t" ++ v3ext ++ nm ++ "\tIN\t" ++ ty ++ "\t" ++ ttl ++
+              "\t" ++ id ++ "\t" ++ dt ++ "\n" ++ accum
+        v3ext = case ver of
+          3 -> "0\t1\t"
+          _ -> ""
+        ttl = show 3600
 
-pdnsAmend :: Int -> String -> RRType -> NmcDom -> String -> String
-pdnsAmend ver id rrtype dom accum =
-  "DATA\t" ++ (show dom) ++ "\n" ++ accum --FIXME
+nmc2pdns :: String -> RRType -> NmcDom -> [(String, String, String)]
+nmc2pdns name RRTypeANY   dom =
+  foldr (\r accum -> (nmc2pdns name r dom) ++ accum) []
+    [RRTypeA, RRTypeAAAA, RRTypeCNAME, RRTypeDNAME, -- no SRV here!
+     RRTypeSOA, RRTypeRP, RRTypeLOC, RRTypeNS, RRTypeDS]
+nmc2pdns name RRTypeSRV   dom = [] -- FIXME
+nmc2pdns name RRTypeA     dom = mapto name "A" $ domIp dom
+nmc2pdns name RRTypeAAAA  dom = mapto name "AAAA" $ domIp6 dom
+nmc2pdns name RRTypeCNAME dom = takejust name "CNAME" $ domAlias dom
+nmc2pdns name RRTypeDNAME dom = takejust name "DNAME" $ domTranslate dom
+nmc2pdns name RRTypeSOA   dom =
+  let
+    email = case domEmail dom of
+      Nothing   -> "hostmaster." ++ name
+      Just addr ->
+        let (aname, adom) = break (== '@') addr
+        in case adom of
+          "" -> aname
+          _  -> aname ++ "." ++ (tail adom)
+  in
+    [(name, "SOA", email ++ " 99999999 10800 3600 604800 86400")]
+nmc2pdns name RRTypeRP    dom = [] --FIXME
+nmc2pdns name RRTypeLOC   dom = takejust name "LOC" $ domLoc dom
+nmc2pdns name RRTypeNS    dom = mapto name "NS" $ domNs dom
+nmc2pdns name RRTypeDS    dom = [] --FIXME
+
+mapto name rrstr maybel = case maybel of
+  Nothing  -> []
+  Just l   -> map (\x -> (name, rrstr, x)) l
+
+takejust name rrstr maybestr = case maybestr of
+  Nothing  -> []
+  Just str -> [(name, rrstr, str)]

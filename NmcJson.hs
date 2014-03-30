@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module NmcJson  ( NmcRes(..)
-                , NmcDom
+                , NmcDom(..)
                 , emptyNmcDom
                 ) where
 
