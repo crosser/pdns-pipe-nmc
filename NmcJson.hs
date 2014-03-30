@@ -105,22 +105,31 @@ instance FromJSON NmcRes where
                 <*> o .: "expires_in"
         parseJSON _ = empty
 
+normalizeDom :: NmcDom -> NmcDom
+normalizeDom dom
+  | domNs        dom /= Nothing = emptyNmcDom { domNs = domNs dom }
+  | domDelegate  dom /= Nothing = emptyNmcDom -- FIXME
+  | domTranslate dom /= Nothing = dom { domMap = Nothing }
+  | otherwise                   = dom
+
 descendNmc :: [String] -> NmcDom -> NmcDom
-descendNmc subdom dom = case subdom of
-  []   ->
-    case domMap dom of
-      Nothing  -> dom
-      Just map ->
-        case M.lookup "" map of         -- Stupid, but "" is allowed in the map
-          Nothing  -> dom               -- Try to merge it with the root data
-          Just sub -> mergeNmc sub dom
-  d:ds ->
-    case domMap dom of
-      Nothing  -> emptyNmcDom
-      Just map ->
-        case M.lookup d map of
-          Nothing  -> emptyNmcDom
-          Just sub -> descendNmc ds sub
+descendNmc subdom rawdom =
+  let dom = normalizeDom rawdom
+  in case subdom of
+    []   ->
+      case domMap dom of
+        Nothing  -> dom
+        Just map ->
+          case M.lookup "" map of         -- Stupid, but there are "" in the map
+            Nothing  -> dom               -- Try to merge it with the root data
+            Just sub -> mergeNmc sub dom  -- Or maybe drop it altogether...
+    d:ds ->
+      case domMap dom of
+        Nothing  -> emptyNmcDom
+        Just map ->
+          case M.lookup d map of
+            Nothing  -> emptyNmcDom
+            Just sub -> descendNmc ds sub
 
 -- FIXME -- I hope there exists a better way to merge records!
 mergeNmc :: NmcDom -> NmcDom -> NmcDom
