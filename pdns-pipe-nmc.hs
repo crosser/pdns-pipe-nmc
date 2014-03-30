@@ -2,6 +2,7 @@
 
 module Main where
 
+import System.IO
 import Control.Monad
 import qualified Data.ByteString.Char8 as C (pack, unpack)
 import qualified Data.ByteString.Lazy.Char8 as L (pack, unpack)
@@ -74,6 +75,8 @@ main = do
 
   cfg <- readConfig confFile
 
+  hSetBuffering stdin  LineBuffering
+  hSetBuffering stdout LineBuffering
   ver <- do
     let
       loopErr e = forever $ do
