@@ -25,7 +25,7 @@ freely, subject to the following restrictions:
 
 ------------------------------------------------------------------------
 
-## Namecoin pipe backend for PowerDNS
+# Namecoin pipe backend for PowerDNS
 
 There exists a [project](https://github.com/namecoin/nmcontrol) to
 create an all-in-one tool that can, among other things, act as a DNS
@@ -39,7 +39,7 @@ time) bridge between [Namecoin](https://namecoin.org/) and DNS.
 with an easy to implement backend interface, which is used in this
 project.
 
-# Status
+## Status
 
 Alpha. It does not handle `SRV` records at all, does not support
 `delegate` (not to mention `import`), provides bogus version in the
