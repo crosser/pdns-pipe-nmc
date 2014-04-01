@@ -1,4 +1,3 @@
-% Namecoin pipe backend for PowerDNS
 # Namecoin pipe backend for PowerDNS
 
 There exists a [project](https://github.com/namecoin/nmcontrol) to
@@ -18,3 +17,15 @@ project.
 Alpha. It does not handle `SRV` records at all, does not support
 `delegate` (not to mention `import`), provides bogus version in the
 `SOA` record, and is largely untested. Try at your risk.
+
+## Getting the Source
+
+Check the [project homepage](http://www.average.org/pdns-pipe-nmc/).
+
+Git [clone](git://git.average.org/git/pdns-pipe-nmc.git) or
+[browse](http://www.average.org/gitweb/?p=pdns-pipe-nmc.git;a=summary).
+
+## Author
+
+Eugene Crosser \<crosser at average dot org\>    
+<http://www.average.org/~crosser/>
