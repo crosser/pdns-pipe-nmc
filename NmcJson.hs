@@ -135,26 +135,26 @@ descendNmc subdom rawdom =
 
 -- FIXME -- I hope there exists a better way to merge records!
 mergeNmc :: NmcDom -> NmcDom -> NmcDom
-mergeNmc sub dom = dom  { domService = choose dom domService sub
-                        , domIp = choose dom domIp sub
-                        , domIp6 = choose dom domIp6 sub
-                        , domTor = choose dom domTor sub
-                        , domI2p = choose dom domI2p sub
-                        , domFreenet = choose dom domFreenet sub
-                        , domAlias = choose dom domAlias sub
-                        , domTranslate = choose dom domTranslate sub
-                        , domEmail = choose dom domEmail sub
-                        , domLoc = choose dom domLoc sub
-                        , domInfo = choose dom domInfo sub
-                        , domNs = choose dom domNs sub
-                        , domDelegate = choose dom domDelegate sub
-                        , domImport = choose dom domImport sub
-                        , domFingerprint = choose dom domFingerprint sub
-                        , domTls = choose dom domTls sub
-                        , domDs = choose dom domDs sub
+mergeNmc sub dom = dom  { domService = choose domService
+                        , domIp =          choose domIp
+                        , domIp6 =         choose domIp6
+                        , domTor =         choose domTor
+                        , domI2p =         choose domI2p
+                        , domFreenet =     choose domFreenet
+                        , domAlias =       choose domAlias
+                        , domTranslate =   choose domTranslate
+                        , domEmail =       choose domEmail
+                        , domLoc =         choose domLoc
+                        , domInfo =        choose domInfo
+                        , domNs =          choose domNs
+                        , domDelegate =    choose domDelegate
+                        , domImport =      choose domImport
+                        , domFingerprint = choose domFingerprint
+                        , domTls =         choose domTls
+                        , domDs =          choose domDs
                         }
   where
-    choose :: NmcDom -> (NmcDom -> Maybe a) -> NmcDom -> Maybe a
-    choose sub t dom = case t dom of
-      Nothing -> t sub
+    choose :: (NmcDom -> Maybe a) -> Maybe a
+    choose field = case field dom of
+      Nothing -> field sub
       Just x  -> Just x
