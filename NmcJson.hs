@@ -107,7 +107,9 @@ instance FromJSON NmcRes where
 
 normalizeDom :: NmcDom -> NmcDom
 normalizeDom dom
-  | domNs        dom /= Nothing = emptyNmcDom { domNs = domNs dom }
+  | domNs        dom /= Nothing = emptyNmcDom { domNs    = domNs dom
+                                              , domEmail = domEmail dom
+                                              }
   | domDelegate  dom /= Nothing = emptyNmcDom -- FIXME
   | domTranslate dom /= Nothing = dom { domMap = Nothing }
   | otherwise                   = dom
