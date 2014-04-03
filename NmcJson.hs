@@ -7,6 +7,7 @@ module NmcJson  ( NmcRes(..)
                 ) where
 
 import Data.ByteString.Lazy (ByteString)
+import Data.Text as T (unpack)
 import Data.Map as M (Map, lookup)
 import Control.Applicative ((<$>), (<*>), empty)
 import Data.Aeson
@@ -65,6 +66,9 @@ data NmcDom = NmcDom    { domService     :: Maybe [[String]] -- [NmcRRService]
                         } deriving (Show, Eq)
 
 instance FromJSON NmcDom where
+        -- Some just put the IP address in the value, especially in the map.
+        -- As an ugly hack, try to interpret string as IP (v4) address.
+        parseJSON (String s) = return emptyNmcDom { domIp = Just [T.unpack s] }
         parseJSON (Object o) = NmcDom
                 <$> o .:? "service"
                 <*> o .:? "ip"
