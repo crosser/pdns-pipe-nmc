@@ -92,7 +92,7 @@ Check the [project homepage](http://www.average.org/pdns-pipe-nmc/).
 
 Git [clone](git://git.average.org/git/pdns-pipe-nmc.git) or
 [browse](http://www.average.org/gitweb/?p=pdns-pipe-nmc.git;a=summary),
-or use [github mirrir](https://github.com/crosser/pdns-pipe-nmc).
+or use [github mirror](https://github.com/crosser/pdns-pipe-nmc).
 
 ## Author
 
