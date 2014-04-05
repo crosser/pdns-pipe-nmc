@@ -54,7 +54,10 @@ rpcport=8336
 
 They are the parameters needed to contact the `namecoind` server over
 its JsonRPC interface. With default installation on `localhost`, you
-will only need to specify `password`.
+will only need to specify `rpcpassword`.
+
+Configure your resolvers to use the PowerDns instance for queries in
+the `.bit` zone. This is left as an exercise to the reader.
 
 ## Security Considerations
 
@@ -66,7 +69,7 @@ hackers or ruthless governments from tampering with your queries
 and powerdns responses. There are two possible approaches to
 mitigation of this problem:
 
-* Run `namecoind` and the bridge as close to the consumer as
+* Run namecoind and powerdns as close to the consumer as
 possible: on the same host, or at least on the same network, and
 keep it guarded.
 * I did not try it, but it should be possible to use PowerDNS
