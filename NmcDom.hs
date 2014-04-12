@@ -3,6 +3,7 @@
 module NmcDom   ( NmcDom(..)
                 , emptyNmcDom
                 , descendNmc
+                , queryDom
                 ) where
 
 import Data.ByteString.Lazy (ByteString)
@@ -158,3 +159,16 @@ mergeNmc sub dom = dom  { domService = choose domService
     choose field = case field dom of
       Nothing -> field sub
       Just x  -> Just x
+
+-- | Perform query and return error string or parsed domain object
+queryDom ::
+  (ByteString -> IO (Either String ByteString)) -- ^ query operation action
+  -> ByteString                                 -- ^ key
+  -> IO (Either String NmcDom)                  -- ^ error string or domain
+queryDom queryOp key = do
+  l <- queryOp key
+  case l of
+    Left estr -> return $ Left estr
+    Right str -> case decode str :: Maybe NmcDom of
+      Nothing  -> return $ Left $ "Unparseable value: " ++ (show str)
+      Just dom -> return $ Right dom
