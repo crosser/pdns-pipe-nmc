@@ -40,31 +40,31 @@ qReq cf q id = applyBasicAuth (C.pack (rpcuser cf)) (C.pack (rpcpassword cf))
                    , checkStatus    = \_ _ _ -> Nothing
                    }
 
-qRsp :: Response ByteString -> Either String NmcDom
+qRsp :: Response ByteString -> Either String ByteString
 qRsp rsp =
     case parseJsonRpc (responseBody rsp) :: Either JsonRpcError NmcRes of
       Left  jerr -> 
         case (jrpcErrCode jerr) of
-          -4 -> Right emptyNmcDom
+          -4 -> Right ""
           _  -> Left $ "JsonRpc error response: " ++ (show jerr)
-      Right jrsp ->
-        case resValue jrsp of
-          "" -> Right emptyNmcDom
-          vstr ->
-            case decode vstr :: Maybe NmcDom of
-              Nothing  -> Left $ "Unparseable value: " ++ (show vstr)
-              Just dom -> Right dom
+      Right jrsp -> Right $ resValue jrsp
 
 -- NMC interface
+
+queryOp :: Manager -> Config -> String -> ByteString
+        -> IO (Either String ByteString)
+queryOp mgr cfg qid key = do
+  rsp <- runResourceT $
+    httpLbs (qReq cfg key (L.pack qid)) mgr
+  return $ qRsp rsp
 
 queryNmc :: Manager -> Config -> String -> String
          -> IO (Either String NmcDom)
 queryNmc mgr cfg fqdn qid = do
   case reverse (splitOn "." fqdn) of
     "bit":dn:xs -> do
-      rsp <- runResourceT $
-             httpLbs (qReq cfg (L.pack ("d/" ++ dn)) (L.pack qid)) mgr
-      return $ case qRsp rsp of
+      dom <- queryDom (queryOp mgr cfg qid) (L.pack ("d/" ++ dn))
+      return $ case dom of
         Left  err -> Left err
         Right dom -> Right $ descendNmc xs dom
     _           ->
