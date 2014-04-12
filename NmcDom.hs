@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module NmcJson  ( NmcRes(..)
-                , NmcDom(..)
+module NmcDom   ( NmcDom(..)
                 , emptyNmcDom
                 , descendNmc
                 ) where
@@ -105,21 +104,6 @@ instance FromJSON NmcDom where
 emptyNmcDom = NmcDom Nothing Nothing Nothing Nothing Nothing Nothing
                      Nothing Nothing Nothing Nothing Nothing Nothing
                      Nothing Nothing Nothing Nothing Nothing Nothing
-
-data NmcRes = NmcRes    { resName       :: String
-                        , resValue      :: ByteString -- string with NmcDom
-                        , resTxid       :: String
-                        , resAddress    :: String
-                        , resExpires_in :: Int
-                        } deriving (Show)
-instance FromJSON NmcRes where
-        parseJSON (Object o) = NmcRes
-                <$> o .: "name"
-                <*> o .: "value"
-                <*> o .: "txid"
-                <*> o .: "address"
-                <*> o .: "expires_in"
-        parseJSON _ = empty
 
 normalizeDom :: NmcDom -> NmcDom
 normalizeDom dom

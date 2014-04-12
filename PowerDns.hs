@@ -5,7 +5,7 @@ module PowerDns ( RRType(..)
                 , pdnsOut
                 ) where
 
-import NmcJson
+import NmcDom
 
 data RRType = RRTypeSRV   | RRTypeA   | RRTypeAAAA | RRTypeCNAME
             | RRTypeDNAME | RRTypeSOA | RRTypeRP   | RRTypeLOC

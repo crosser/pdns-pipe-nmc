@@ -16,7 +16,8 @@ import Network.HTTP.Conduit
 import JsonRpcClient
 import Config
 import PowerDns
-import NmcJson
+import NmcRpc
+import NmcDom
 
 confFile = "/etc/namecoin.conf"
 
