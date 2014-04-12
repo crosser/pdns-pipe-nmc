@@ -2,12 +2,14 @@
 
 module NmcDom   ( NmcDom(..)
                 , emptyNmcDom
-                , descendNmc
-                , queryDom
+                , descendNmcDom
+                , queryNmcDom
+                , mergeImport
                 ) where
 
 import Data.ByteString.Lazy (ByteString)
-import Data.Text as T (unpack)
+import qualified Data.ByteString.Lazy.Char8 as L (pack)
+import qualified Data.Text as T (unpack)
 import Data.List.Split
 import Data.Char
 import Data.Map as M (Map, lookup)
@@ -59,7 +61,7 @@ data NmcDom = NmcDom    { domService     :: Maybe [[String]] -- [NmcRRService]
                         , domInfo        :: Maybe Value
                         , domNs          :: Maybe [String]
                         , domDelegate    :: Maybe [String]
-                        , domImport      :: Maybe [[String]]
+                        , domImport      :: Maybe String
                         , domMap         :: Maybe (Map String NmcDom)
                         , domFingerprint :: Maybe [String]
                         , domTls         :: Maybe (Map String
@@ -115,8 +117,8 @@ normalizeDom dom
   | domTranslate dom /= Nothing = dom { domMap = Nothing }
   | otherwise                   = dom
 
-descendNmc :: [String] -> NmcDom -> NmcDom
-descendNmc subdom rawdom =
+descendNmcDom :: [String] -> NmcDom -> NmcDom
+descendNmcDom subdom rawdom =
   let dom = normalizeDom rawdom
   in case subdom of
     []   ->
@@ -125,18 +127,18 @@ descendNmc subdom rawdom =
         Just map ->
           case M.lookup "" map of         -- Stupid, but there are "" in the map
             Nothing  -> dom               -- Try to merge it with the root data
-            Just sub -> mergeNmc sub dom  -- Or maybe drop it altogether...
+            Just sub -> mergeNmcDom sub dom  -- Or maybe drop it altogether...
     d:ds ->
       case domMap dom of
         Nothing  -> emptyNmcDom
         Just map ->
           case M.lookup d map of
             Nothing  -> emptyNmcDom
-            Just sub -> descendNmc ds sub
+            Just sub -> descendNmcDom ds sub
 
 -- FIXME -- I hope there exists a better way to merge records!
-mergeNmc :: NmcDom -> NmcDom -> NmcDom
-mergeNmc sub dom = dom  { domService = choose domService
+mergeNmcDom :: NmcDom -> NmcDom -> NmcDom
+mergeNmcDom sub dom = dom  { domService = choose domService
                         , domIp =          choose domIp
                         , domIp6 =         choose domIp6
                         , domTor =         choose domTor
@@ -161,14 +163,33 @@ mergeNmc sub dom = dom  { domService = choose domService
       Just x  -> Just x
 
 -- | Perform query and return error string or parsed domain object
-queryDom ::
+queryNmcDom ::
   (ByteString -> IO (Either String ByteString)) -- ^ query operation action
   -> ByteString                                 -- ^ key
   -> IO (Either String NmcDom)                  -- ^ error string or domain
-queryDom queryOp key = do
+queryNmcDom queryOp key = do
   l <- queryOp key
   case l of
     Left estr -> return $ Left estr
     Right str -> case decode str :: Maybe NmcDom of
       Nothing  -> return $ Left $ "Unparseable value: " ++ (show str)
       Just dom -> return $ Right dom
+
+-- | Try to fetch "import" object and merge it into the base domain
+--   Any errors are ignored, and nothing is merged.
+--   Original "import" element is removed, but new imports from the
+--   imported objects are processed recursively until there are none.
+mergeImport ::
+  (ByteString -> IO (Either String ByteString)) -- ^ query operation action
+  -> NmcDom                                     -- ^ base domain
+  -> IO NmcDom                                  -- ^ result with merged import
+mergeImport queryOp base = do
+  let base' = base {domImport = Nothing}
+  -- print base'
+  case domImport base of
+    Nothing  -> return base'
+    Just key -> do
+      sub <- queryNmcDom queryOp (L.pack key)
+      case sub of
+        Left  e    -> return base'
+        Right sub' -> mergeImport queryOp $ sub' `mergeNmcDom` base'

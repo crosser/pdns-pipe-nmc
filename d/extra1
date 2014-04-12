@@ -1,0 +1,1 @@
+{"service":[["imap", "tcp", "0", "0", "143", "mail.host.com."],["smtp", "tcp", "0", "0", "143", "mail.host.com."]]}

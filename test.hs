@@ -11,10 +11,10 @@ import Control.Exception
 import NmcDom
 
 queryOp :: ByteString -> IO (Either String ByteString)
-queryOp key = catch (readFile ("d/" ++ (unpack key)) >>= return . Right)
+queryOp key = catch (readFile (unpack key) >>= return . Right)
                     (\e -> return (Left (show (e :: IOException))))
 
 main = do
-        d <- queryDom queryOp "root"
+        d <- mergeImport queryOp (emptyNmcDom {domImport = Just "d/root"})
         putStrLn $ show d
 
