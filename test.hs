@@ -11,7 +11,7 @@ import Control.Exception
 import NmcDom
 
 queryOp :: ByteString -> IO (Either String ByteString)
-queryOp key = catch (readFile ("data/" ++ (unpack key)) >>= return . Right)
+queryOp key = catch (readFile ("d/" ++ (unpack key)) >>= return . Right)
                     (\e -> return (Left (show (e :: IOException))))
 
 main = do
