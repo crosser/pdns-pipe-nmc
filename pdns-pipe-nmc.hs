@@ -45,7 +45,7 @@ qRsp rsp =
     case parseJsonRpc (responseBody rsp) :: Either JsonRpcError NmcRes of
       Left  jerr -> 
         case (jrpcErrCode jerr) of
-          -4 -> Right ""
+          -4 -> Right "{}"      -- this is how non-existent entry is returned
           _  -> Left $ "JsonRpc error response: " ++ (show jerr)
       Right jrsp -> Right $ resValue jrsp
 
