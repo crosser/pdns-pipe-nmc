@@ -186,20 +186,22 @@ queryNmcDom queryOp key = do
 --   imported objects are processed recursively until there are none.
 mergeImport ::
   (String -> IO (Either String ByteString)) -- ^ query operation action
+  -> Int                                    -- ^ recursion counter
   -> NmcDom                                 -- ^ base domain
   -> IO (Either String NmcDom)              -- ^ result with merged import
-mergeImport queryOp base = do
+mergeImport queryOp depth base = do
   let
     mbase = mergeSelf base
     base' = mbase {domImport = Nothing}
   -- print base
-  case domImport mbase of
+  if depth <= 0 then return $ Left "Nesting of imports is too deep"
+  else case domImport mbase of
     Nothing  -> return $ Right base'
     Just key -> do
       sub <- queryNmcDom queryOp key
       case sub of
         Left  e    -> return $ Left e
-        Right sub' -> mergeImport queryOp $ sub' `merge` base'
+        Right sub' -> mergeImport queryOp (depth - 1) $ sub' `merge` base'
 
 -- | If there is an element in the map with key "", merge the contents
 --   and remove this element. Do this recursively.
@@ -218,6 +220,7 @@ mergeSelf base =
         case M.lookup "" map' of
           Nothing  -> base'
           Just sub -> (mergeSelf sub) `merge` base'
+        -- recursion depth limited by the size of the record
 
 -- | Presence of some elements require removal of some others
 normalizeDom :: NmcDom -> NmcDom
@@ -239,7 +242,7 @@ descendNmcDom ::
   -> NmcDom                                 -- ^ base domain
   -> IO (Either String NmcDom)              -- ^ fully processed result
 descendNmcDom queryOp subdom base = do
-  base' <- mergeImport queryOp base
+  base' <- mergeImport queryOp 10 base
   case subdom of
     []   -> return $ fmap normalizeDom base'
     d:ds ->

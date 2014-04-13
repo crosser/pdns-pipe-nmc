@@ -71,7 +71,7 @@ pdnsReport err =
 pdnsOut :: Int -> String -> String -> RRType -> Either String NmcDom -> String
 pdnsOut ver id name rrtype edom =
   case edom of
-    Left  err -> pdnsReport err
+    Left  err -> pdnsReport $ err ++ " in a query for " ++ name
     Right dom -> foldr addLine "END\n" $ nmc2pdns name rrtype dom
       where
         addLine (nm, ty, dt) accum =
