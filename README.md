@@ -9,9 +9,9 @@ for offline conversion of namecoin data into BIND zone file.
 
 Unlike those, this project is a single-purpose tool acting as a (real
 time) bridge between [Namecoin](http://namecoin.info/) and DNS.
-[PowerDNS](https://www.powerdns.com/) provides a stable DNS frontend,
-with an easy to implement backend interface. The latter is used in
-this project.
+It is implemented as a `pipe backend` to
+[PowerDNS](https://www.powerdns.com/), which provides stable DNS
+frontend, and has simple backend interface.
 
 ## Building
 
@@ -82,9 +82,15 @@ your resolvers.
 
 ## Status
 
-Alpha. It does not handle `SRV` records at all, does not support
-`delegate` (not to mention `import`), provides bogus version in the
-`SOA` record, and is largely untested. Try at your risk.
+Alpha. It is largely untested, and there are loose ends in the
+functionality. For example, `delegate` does not work yet, version in the
+`SOA` record is bogus. Some of the the problems are due to incomplete
+and/or imprecise
+[definition of the domain data format](https://wiki.namecoin.info/index.php?title=Domain_Name_Specification)
+on the wiki. That said, I am using it to access some of the `.bit` websites
+and did not notice anomalies so far.
+
+Try at your risk.
 
 ## Getting the Source
 
