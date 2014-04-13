@@ -4,9 +4,10 @@ module Main where
 
 import System.IO
 import Control.Monad
-import qualified Data.ByteString.Char8 as C (pack, unpack)
-import qualified Data.ByteString.Lazy.Char8 as L (pack, unpack)
-import Data.ByteString.Lazy as BS hiding (reverse, putStr, putStrLn)
+import Data.ByteString.Lazy hiding (reverse, putStr, putStrLn)
+import qualified Data.ByteString.Char8 as C (pack)
+import qualified Data.ByteString.Lazy.Char8 as L (pack)
+import qualified Data.Text as T (pack)
 import Data.List.Split
 import Data.Aeson (encode, decode, Value(..))
 import Network.HTTP.Types
@@ -23,7 +24,7 @@ confFile = "/etc/namecoin.conf"
 
 -- HTTP/JsonRpc interface
 
-qReq :: Config -> ByteString -> ByteString -> Request m
+qReq :: Config -> String -> String -> Request m
 qReq cf q id = applyBasicAuth (C.pack (rpcuser cf)) (C.pack (rpcpassword cf))
              $ def { host           = (C.pack (rpchost cf))
                    , port           = (rpcport cf)
@@ -35,8 +36,8 @@ qReq cf q id = applyBasicAuth (C.pack (rpcuser cf)) (C.pack (rpcpassword cf))
                    , requestBody    = RequestBodyLBS $ encode $
                                       JsonRpcRequest JsonRpcV1
                                                      "name_show"
-                                                     [q]
-                                                     (String "pdns-nmc")
+                                                     [L.pack q]
+                                                     (String (T.pack id))
                    , checkStatus    = \_ _ _ -> Nothing
                    }
 
@@ -51,23 +52,23 @@ qRsp rsp =
 
 -- NMC interface
 
-queryOp :: Manager -> Config -> String -> String
-        -> IO (Either String ByteString)
-queryOp mgr cfg qid key = do
-  rsp <- runResourceT $
-    httpLbs (qReq cfg (L.pack key) (L.pack qid)) mgr
-  return $ qRsp rsp
-
 queryNmc :: Manager -> Config -> String -> String
          -> IO (Either String NmcDom)
-queryNmc mgr cfg fqdn qid = do
+queryNmc mgr cfg qid fqdn =
   case reverse (splitOn "." fqdn) of
     "bit":dn:xs -> do
-      dom <- mergeImport (queryOp mgr cfg qid) $
+      dom <- mergeImport queryOp $
                 emptyNmcDom { domImport = Just ("d/" ++ dn)}
-      return $ Right $ descendNmcDom xs dom
+      case dom of
+        Left  err  -> return $ Left err
+        Right dom' -> return $ Right $ descendNmcDom xs dom'
     _           ->
       return $ Left "Only \".bit\" domain is supported"
+  where
+    queryOp key = do
+      rsp <- runResourceT $ httpLbs (qReq cfg key qid) mgr
+      -- print $ qRsp rsp
+      return $ qRsp rsp
 
 -- Main entry
 
@@ -101,7 +102,7 @@ main = do
       Right preq -> do
         case preq of
           PdnsRequestQ qname qtype id _ _ _ ->
-            queryNmc mgr cfg qname id >>= putStr . (pdnsOut ver id qname qtype)
+            queryNmc mgr cfg id qname >>= putStr . (pdnsOut ver id qname qtype)
           PdnsRequestAXFR xfrreq ->
             putStr $ pdnsReport ("No support for AXFR " ++ xfrreq)
           PdnsRequestPing -> putStrLn "END"
@@ -111,4 +112,4 @@ main = do
 ask str = do
   cfg <- readConfig confFile
   mgr <- newManager def
-  queryNmc mgr cfg str "askid" >>= putStr . (pdnsOut 1 "askid" str RRTypeANY)
+  queryNmc mgr cfg "askid" str >>= putStr . (pdnsOut 1 "askid" str RRTypeANY)

@@ -174,20 +174,19 @@ queryNmcDom queryOp key = do
       Just dom -> return $ Right dom
 
 -- | Try to fetch "import" object and merge it into the base domain
---   In case of errors they are ignored, and nothing is merged.
 --   Original "import" element is removed, but new imports from the
 --   imported objects are processed recursively until there are none.
 mergeImport ::
   (String -> IO (Either String ByteString)) -- ^ query operation action
   -> NmcDom                                 -- ^ base domain
-  -> IO NmcDom                              -- ^ result with merged import
+  -> IO (Either String NmcDom)              -- ^ result with merged import
 mergeImport queryOp base = do
   let base' = base {domImport = Nothing}
   -- print base'
   case domImport base of
-    Nothing  -> return base'
+    Nothing  -> return $ Right base'
     Just key -> do
       sub <- queryNmcDom queryOp key
       case sub of
-        Left  e    -> return base'
+        Left  e    -> return $ Left e
         Right sub' -> mergeImport queryOp $ sub' `mergeNmcDom` base'
