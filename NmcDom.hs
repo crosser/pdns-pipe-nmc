@@ -246,7 +246,7 @@ descendNmcDom queryOp subdom base = do
   case subdom of
     []   -> return $ fmap normalizeDom base'
     -- A hack to handle SRV records: don't descend if ["_prot","_serv"]
-    [('_':_),('-':_)] -> return $ fmap normalizeDom base'
+    [('_':_),('_':_)] -> return $ fmap normalizeDom base'
     d:ds ->
       case base' of
         Left err     -> return base'
