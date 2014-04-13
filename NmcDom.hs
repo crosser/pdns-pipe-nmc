@@ -26,16 +26,16 @@ data NmcRRService = NmcRRService
                         } deriving (Show, Eq)
 
 instance FromJSON NmcRRService where
-  parseJSON (Array a) =
-    if length a == 6 then NmcRRService
-      <$> parseJSON (a ! 0)
-      <*> parseJSON (a ! 1)
-      <*> parseJSON (a ! 2)
-      <*> parseJSON (a ! 3)
-      <*> parseJSON (a ! 4)
-      <*> parseJSON (a ! 5)
-    else empty
-  parseJSON _ = empty
+        parseJSON (Array a) =
+                if length a == 6 then NmcRRService
+                        <$> parseJSON (a ! 0)
+                        <*> parseJSON (a ! 1)
+                        <*> parseJSON (a ! 2)
+                        <*> parseJSON (a ! 3)
+                        <*> parseJSON (a ! 4)
+                        <*> parseJSON (a ! 5)
+                else empty
+        parseJSON _ = empty
 
 data NmcRRI2p = NmcRRI2p
                         { i2pDestination :: String
