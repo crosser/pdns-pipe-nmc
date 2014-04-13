@@ -92,7 +92,7 @@ nmc2pdns name RRTypeA     dom = mapto name "A" $ domIp dom
 nmc2pdns name RRTypeAAAA  dom = mapto name "AAAA" $ domIp6 dom
 nmc2pdns name RRTypeCNAME dom = takejust name "CNAME" $ domAlias dom
 nmc2pdns name RRTypeDNAME dom = takejust name "DNAME" $ domTranslate dom
-nmc2pdns name RRTypeSOA   dom =
+nmc2pdns name RRTypeSOA   dom = -- FIXME generate only for top domain
   if dom == emptyNmcDom then []
   else
     let

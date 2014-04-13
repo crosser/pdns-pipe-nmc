@@ -41,8 +41,8 @@ instance Eq a => Mergeable [a] where
 data NmcRRService = NmcRRService
                         { srvName       :: String
                         , srvProto      :: String
-                        , srvW1         :: Int
-                        , srvW2         :: Int
+                        , srvPrio       :: Int
+                        , srvWeight     :: Int
                         , srvPort       :: Int
                         , srvHost       :: String
                         } deriving (Show, Eq)
@@ -222,10 +222,18 @@ mergeSelf base =
           Just sub -> (mergeSelf sub) `merge` base'
         -- recursion depth limited by the size of the record
 
+-- | SRV case - remove everyting and filter SRV records
+normalizeSrv :: String -> String -> NmcDom -> NmcDom
+normalizeSrv serv proto dom =
+  emptyNmcDom {domService = fmap (filter needed) (domService dom)}
+    where
+      needed r = srvName r == serv && srvProto r == proto
+
 -- | Presence of some elements require removal of some others
 normalizeDom :: NmcDom -> NmcDom
-normalizeDom dom = foldr id dom [ translateNormalizer
-                                -- , nsNormalizer -- FIXME retrun this
+normalizeDom dom = foldr id dom [ srvNormalizer
+                                , translateNormalizer
+                                , nsNormalizer
                                 ]
   where
     nsNormalizer dom = case domNs dom of
@@ -234,6 +242,7 @@ normalizeDom dom = foldr id dom [ translateNormalizer
     translateNormalizer dom = case domTranslate dom of
       Nothing  -> dom
       Just tr  -> dom { domMap = Nothing }
+    srvNormalizer dom = dom { domService = Nothing }
 
 -- | Merge imports and Selfs and follow the maps tree to get dom
 descendNmcDom ::
@@ -246,7 +255,7 @@ descendNmcDom queryOp subdom base = do
   case subdom of
     []   -> return $ fmap normalizeDom base'
     -- A hack to handle SRV records: don't descend if ["_prot","_serv"]
-    [('_':_),('_':_)] -> return $ fmap normalizeDom base'
+    [('_':p),('_':s)] -> return $ fmap (normalizeSrv s p) base'
     d:ds ->
       case base' of
         Left err     -> return base'
