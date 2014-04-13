@@ -15,6 +15,6 @@ queryOp key = catch (readFile key >>= return . Right)
                     (\e -> return (Left (show (e :: IOException))))
 
 main = do
-        d <- descendNmcDom queryOp [] $ seedNmcDom "root"
-        putStrLn $ show d
+        descendNmcDom queryOp []               (seedNmcDom "root") >>= print
+        descendNmcDom queryOp ["_tcp","_smtp"] (seedNmcDom "root") >>= print
 
