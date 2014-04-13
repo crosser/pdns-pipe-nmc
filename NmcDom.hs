@@ -6,32 +6,36 @@ module NmcDom   ( NmcDom(..)
                 , descendNmcDom
                 ) where
 
+import Prelude hiding (length)
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.Text as T (unpack)
 import Data.List.Split
 import Data.Char
 import Data.Map as M (Map, lookup, delete, size)
+import Data.Vector (toList,(!),length)
 import Control.Applicative ((<$>), (<*>), empty)
 import Data.Aeson
 
-data NmcRRService = NmcRRService -- unused
+data NmcRRService = NmcRRService
                         { srvName       :: String
                         , srvProto      :: String
                         , srvW1         :: Int
                         , srvW2         :: Int
                         , srvPort       :: Int
-                        , srvHost       :: [String]
+                        , srvHost       :: String
                         } deriving (Show, Eq)
 
 instance FromJSON NmcRRService where
-        parseJSON (Object o) = NmcRRService
-                <$> o .: "name"
-                <*> o .: "proto"
-                <*> o .: "w1"
-                <*> o .: "w2"
-                <*> o .: "port"
-                <*> o .: "host"
-        parseJSON _ = empty
+  parseJSON (Array a) =
+    if length a == 6 then NmcRRService
+      <$> parseJSON (a ! 0)
+      <*> parseJSON (a ! 1)
+      <*> parseJSON (a ! 2)
+      <*> parseJSON (a ! 3)
+      <*> parseJSON (a ! 4)
+      <*> parseJSON (a ! 5)
+    else empty
+  parseJSON _ = empty
 
 data NmcRRI2p = NmcRRI2p
                         { i2pDestination :: String
@@ -46,7 +50,7 @@ instance FromJSON NmcRRI2p where
                 <*> o .: "b32"
         parseJSON _ = empty
 
-data NmcDom = NmcDom    { domService     :: Maybe [[String]] -- [NmcRRService]
+data NmcDom = NmcDom    { domService     :: Maybe [NmcRRService]
                         , domIp          :: Maybe [String]
                         , domIp6         :: Maybe [String]
                         , domTor         :: Maybe String
@@ -186,8 +190,8 @@ mergeSelf base =
 
 -- | Presence of some elements require removal of some others
 normalizeDom :: NmcDom -> NmcDom
-normalizeDom dom = foldr id dom [ nsNormalizer
-                                , translateNormalizer
+normalizeDom dom = foldr id dom [ translateNormalizer
+                                -- , nsNormalizer -- FIXME retrun this
                                 ]
   where
     nsNormalizer dom = case domNs dom of
