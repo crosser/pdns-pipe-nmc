@@ -3,12 +3,10 @@
 module NmcDom   ( NmcDom(..)
                 , emptyNmcDom
                 , descendNmcDom
-                , queryNmcDom
                 , mergeImport
                 ) where
 
 import Data.ByteString.Lazy (ByteString)
-import qualified Data.ByteString.Lazy.Char8 as L (pack)
 import qualified Data.Text as T (unpack)
 import Data.List.Split
 import Data.Char
@@ -164,9 +162,9 @@ mergeNmcDom sub dom = dom  { domService = choose domService
 
 -- | Perform query and return error string or parsed domain object
 queryNmcDom ::
-  (ByteString -> IO (Either String ByteString)) -- ^ query operation action
-  -> ByteString                                 -- ^ key
-  -> IO (Either String NmcDom)                  -- ^ error string or domain
+  (String -> IO (Either String ByteString)) -- ^ query operation action
+  -> String                                 -- ^ key
+  -> IO (Either String NmcDom)              -- ^ error string or domain
 queryNmcDom queryOp key = do
   l <- queryOp key
   case l of
@@ -176,20 +174,20 @@ queryNmcDom queryOp key = do
       Just dom -> return $ Right dom
 
 -- | Try to fetch "import" object and merge it into the base domain
---   Any errors are ignored, and nothing is merged.
+--   In case of errors they are ignored, and nothing is merged.
 --   Original "import" element is removed, but new imports from the
 --   imported objects are processed recursively until there are none.
 mergeImport ::
-  (ByteString -> IO (Either String ByteString)) -- ^ query operation action
-  -> NmcDom                                     -- ^ base domain
-  -> IO NmcDom                                  -- ^ result with merged import
+  (String -> IO (Either String ByteString)) -- ^ query operation action
+  -> NmcDom                                 -- ^ base domain
+  -> IO NmcDom                              -- ^ result with merged import
 mergeImport queryOp base = do
   let base' = base {domImport = Nothing}
   -- print base'
   case domImport base of
     Nothing  -> return base'
     Just key -> do
-      sub <- queryNmcDom queryOp (L.pack key)
+      sub <- queryNmcDom queryOp key
       case sub of
         Left  e    -> return base'
         Right sub' -> mergeImport queryOp $ sub' `mergeNmcDom` base'

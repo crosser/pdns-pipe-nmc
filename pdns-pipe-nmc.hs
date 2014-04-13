@@ -51,11 +51,11 @@ qRsp rsp =
 
 -- NMC interface
 
-queryOp :: Manager -> Config -> String -> ByteString
+queryOp :: Manager -> Config -> String -> String
         -> IO (Either String ByteString)
 queryOp mgr cfg qid key = do
   rsp <- runResourceT $
-    httpLbs (qReq cfg key (L.pack qid)) mgr
+    httpLbs (qReq cfg (L.pack key) (L.pack qid)) mgr
   return $ qRsp rsp
 
 queryNmc :: Manager -> Config -> String -> String
@@ -63,10 +63,9 @@ queryNmc :: Manager -> Config -> String -> String
 queryNmc mgr cfg fqdn qid = do
   case reverse (splitOn "." fqdn) of
     "bit":dn:xs -> do
-      dom <- queryDom (queryOp mgr cfg qid) (L.pack ("d/" ++ dn))
-      return $ case dom of
-        Left  err -> Left err
-        Right dom -> Right $ descendNmc xs dom
+      dom <- mergeImport (queryOp mgr cfg qid) $
+                emptyNmcDom { domImport = Just ("d/" ++ dn)}
+      return $ Right $ descendNmcDom xs dom
     _           ->
       return $ Left "Only \".bit\" domain is supported"
 

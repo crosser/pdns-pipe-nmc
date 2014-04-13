@@ -4,14 +4,14 @@ module Main where
 
 import Prelude hiding (readFile)
 import Data.ByteString.Lazy (ByteString)
-import Data.ByteString.Lazy.Char8 (unpack, readFile)
+import Data.ByteString.Lazy.Char8 (readFile)
 import System.IO.Error
 import Control.Exception
 
 import NmcDom
 
-queryOp :: ByteString -> IO (Either String ByteString)
-queryOp key = catch (readFile (unpack key) >>= return . Right)
+queryOp :: String -> IO (Either String ByteString)
+queryOp key = catch (readFile key >>= return . Right)
                     (\e -> return (Left (show (e :: IOException))))
 
 main = do
