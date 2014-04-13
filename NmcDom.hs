@@ -171,10 +171,9 @@ mergeImport queryOp base = do
 mergeSelf :: NmcDom -> NmcDom
 mergeSelf base =
   let
-    nbase = normalizeDom base
-    map   = domMap nbase
-    base' = nbase {domMap = removeSelf map}
-    removeSelf (Nothing)  = Nothing
+    map   = domMap base
+    base' = base {domMap = removeSelf map}
+    removeSelf Nothing    = Nothing
     removeSelf (Just map) = if size map' == 0 then Nothing else Just map'
       where map' = M.delete "" map
   in
@@ -187,13 +186,16 @@ mergeSelf base =
 
 -- | Presence of some elements require removal of some others
 normalizeDom :: NmcDom -> NmcDom
-normalizeDom dom
-  | domNs        dom /= Nothing = emptyNmcDom { domNs    = domNs dom
-                                              , domEmail = domEmail dom
-                                              }
-  | domDelegate  dom /= Nothing = emptyNmcDom -- FIXME
-  | domTranslate dom /= Nothing = dom { domMap = Nothing }
-  | otherwise                   = dom
+normalizeDom dom = foldr id dom [ nsNormalizer
+                                , translateNormalizer
+                                ]
+  where
+    nsNormalizer dom = case domNs dom of
+      Nothing  -> dom
+      Just ns  -> emptyNmcDom { domNs = domNs dom, domEmail = domEmail dom }
+    translateNormalizer dom = case domTranslate dom of
+      Nothing  -> dom
+      Just tr  -> dom { domMap = Nothing }
 
 -- | Merge imports and Selfs and follow the maps tree to get dom
 descendNmcDom ::
@@ -204,7 +206,7 @@ descendNmcDom ::
 descendNmcDom queryOp subdom base = do
   base' <- mergeImport queryOp base
   case subdom of
-    []   -> return base'
+    []   -> return $ fmap normalizeDom base'
     d:ds ->
       case base' of
         Left err     -> return base'
