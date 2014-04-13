@@ -2,15 +2,15 @@
 
 module NmcDom   ( NmcDom(..)
                 , emptyNmcDom
+                , seedNmcDom
                 , descendNmcDom
-                , mergeImport
                 ) where
 
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.Text as T (unpack)
 import Data.List.Split
 import Data.Char
-import Data.Map as M (Map, lookup)
+import Data.Map as M (Map, lookup, delete, size)
 import Control.Applicative ((<$>), (<*>), empty)
 import Data.Aeson
 
@@ -106,34 +106,6 @@ emptyNmcDom = NmcDom Nothing Nothing Nothing Nothing Nothing Nothing
                      Nothing Nothing Nothing Nothing Nothing Nothing
                      Nothing Nothing Nothing Nothing Nothing Nothing
 
-normalizeDom :: NmcDom -> NmcDom
-normalizeDom dom
-  | domNs        dom /= Nothing = emptyNmcDom { domNs    = domNs dom
-                                              , domEmail = domEmail dom
-                                              }
-  | domDelegate  dom /= Nothing = emptyNmcDom -- FIXME
-  | domTranslate dom /= Nothing = dom { domMap = Nothing }
-  | otherwise                   = dom
-
-descendNmcDom :: [String] -> NmcDom -> NmcDom
-descendNmcDom subdom rawdom =
-  let dom = normalizeDom rawdom
-  in case subdom of
-    []   ->
-      case domMap dom of
-        Nothing  -> dom
-        Just map ->
-          case M.lookup "" map of         -- Stupid, but there are "" in the map
-            Nothing  -> dom               -- Try to merge it with the root data
-            Just sub -> mergeNmcDom sub dom  -- Or maybe drop it altogether...
-    d:ds ->
-      case domMap dom of
-        Nothing  -> emptyNmcDom
-        Just map ->
-          case M.lookup d map of
-            Nothing  -> emptyNmcDom
-            Just sub -> descendNmcDom ds sub
-
 -- FIXME -- I hope there exists a better way to merge records!
 mergeNmcDom :: NmcDom -> NmcDom -> NmcDom
 mergeNmcDom sub dom = dom  { domService = choose domService
@@ -150,6 +122,7 @@ mergeNmcDom sub dom = dom  { domService = choose domService
                         , domNs =          choose domNs
                         , domDelegate =    choose domDelegate
                         , domImport =      choose domImport
+                        , domMap =         choose domMap
                         , domFingerprint = choose domFingerprint
                         , domTls =         choose domTls
                         , domDs =          choose domDs
@@ -181,12 +154,70 @@ mergeImport ::
   -> NmcDom                                 -- ^ base domain
   -> IO (Either String NmcDom)              -- ^ result with merged import
 mergeImport queryOp base = do
-  let base' = base {domImport = Nothing}
-  -- print base'
-  case domImport base of
+  let
+    mbase = mergeSelf base
+    base' = mbase {domImport = Nothing}
+  -- print base
+  case domImport mbase of
     Nothing  -> return $ Right base'
     Just key -> do
       sub <- queryNmcDom queryOp key
       case sub of
         Left  e    -> return $ Left e
         Right sub' -> mergeImport queryOp $ sub' `mergeNmcDom` base'
+
+-- | If there is an element in the map with key "", merge the contents
+--   and remove this element. Do this recursively.
+mergeSelf :: NmcDom -> NmcDom
+mergeSelf base =
+  let
+    nbase = normalizeDom base
+    map   = domMap nbase
+    base' = nbase {domMap = removeSelf map}
+    removeSelf (Nothing)  = Nothing
+    removeSelf (Just map) = if size map' == 0 then Nothing else Just map'
+      where map' = M.delete "" map
+  in
+    case map of
+      Nothing   -> base'
+      Just map' ->
+        case M.lookup "" map' of
+          Nothing  -> base'
+          Just sub -> (mergeSelf sub) `mergeNmcDom` base'
+
+-- | Presence of some elements require removal of some others
+normalizeDom :: NmcDom -> NmcDom
+normalizeDom dom
+  | domNs        dom /= Nothing = emptyNmcDom { domNs    = domNs dom
+                                              , domEmail = domEmail dom
+                                              }
+  | domDelegate  dom /= Nothing = emptyNmcDom -- FIXME
+  | domTranslate dom /= Nothing = dom { domMap = Nothing }
+  | otherwise                   = dom
+
+-- | Merge imports and Selfs and follow the maps tree to get dom
+descendNmcDom ::
+  (String -> IO (Either String ByteString)) -- ^ query operation action
+  -> [String]                               -- ^ subdomain chain
+  -> NmcDom                                 -- ^ base domain
+  -> IO (Either String NmcDom)              -- ^ fully processed result
+descendNmcDom queryOp subdom base = do
+  base' <- mergeImport queryOp base
+  case subdom of
+    []   -> return base'
+    d:ds ->
+      case base' of
+        Left err     -> return base'
+        Right base'' ->
+          case domMap base'' of
+            Nothing  -> return $ Right emptyNmcDom
+            Just map ->
+              case M.lookup d map of
+                Nothing  -> return $ Right emptyNmcDom
+                Just sub -> descendNmcDom queryOp ds sub
+
+-- | Initial NmcDom populated with "import" only, suitable for "descend"
+seedNmcDom ::
+  String        -- ^ domain key (without namespace prefix)
+  -> NmcDom     -- ^ resulting seed domain
+seedNmcDom dn = emptyNmcDom { domImport = Just ("d/" ++ dn)}

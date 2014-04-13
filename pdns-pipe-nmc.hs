@@ -56,14 +56,8 @@ queryNmc :: Manager -> Config -> String -> String
          -> IO (Either String NmcDom)
 queryNmc mgr cfg qid fqdn =
   case reverse (splitOn "." fqdn) of
-    "bit":dn:xs -> do
-      dom <- mergeImport queryOp $
-                emptyNmcDom { domImport = Just ("d/" ++ dn)}
-      case dom of
-        Left  err  -> return $ Left err
-        Right dom' -> return $ Right $ descendNmcDom xs dom'
-    _           ->
-      return $ Left "Only \".bit\" domain is supported"
+    "bit":dn:xs -> descendNmcDom queryOp xs $ seedNmcDom dn
+    _           -> return $ Left "Only \".bit\" domain is supported"
   where
     queryOp key = do
       rsp <- runResourceT $ httpLbs (qReq cfg key qid) mgr
