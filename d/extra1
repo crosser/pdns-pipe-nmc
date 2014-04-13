@@ -1,1 +1,1 @@
-{"service":[["smtp", "tcp", 0, 0, 143, "mail.host.com."]],"import":"d/extra2","ip":["1.2.3.4"],"alias":"extra1alias"}
+{"service":[["smtp", "tcp", 0, 0, 25, "mail.host.com."]],"import":"d/extra2","ip":["1.2.3.4"],"alias":"extra1alias"}

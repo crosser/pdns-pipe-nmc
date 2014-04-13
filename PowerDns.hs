@@ -9,7 +9,7 @@ import NmcDom
 
 data RRType = RRTypeSRV   | RRTypeA   | RRTypeAAAA | RRTypeCNAME
             | RRTypeDNAME | RRTypeSOA | RRTypeRP   | RRTypeLOC
-            | RRTypeNS    | RRTypeDS
+            | RRTypeNS    | RRTypeDS  | RRTypeMX
             | RRTypeANY   | RRTypeError String 
         deriving (Show)
 
@@ -38,6 +38,7 @@ pdnsParse ver s =
       "LOC"     -> RRTypeLOC
       "NS"      -> RRTypeNS    
       "DS"      -> RRTypeDS
+      "MX"      -> RRTypeMX
       "ANY"     -> RRTypeANY
       _         -> RRTypeError qt
     getLIp ver xs
@@ -85,9 +86,10 @@ pdnsOut ver id name rrtype edom =
 nmc2pdns :: String -> RRType -> NmcDom -> [(String, String, String)]
 nmc2pdns name RRTypeANY   dom =
   foldr (\r accum -> (nmc2pdns name r dom) ++ accum) []
-    [RRTypeA, RRTypeAAAA, RRTypeCNAME, RRTypeDNAME, -- no SRV here!
-     RRTypeSOA, RRTypeRP, RRTypeLOC, RRTypeNS, RRTypeDS]
-nmc2pdns name RRTypeSRV   dom = [] -- FIXME
+    [RRTypeSRV, RRTypeA, RRTypeAAAA, RRTypeCNAME, RRTypeDNAME,
+     RRTypeSOA, RRTypeRP, RRTypeLOC, RRTypeNS, RRTypeDS, RRTypeMX]
+nmc2pdns name RRTypeSRV   dom = makesrv name "SRV" $ domService dom
+nmc2pdns name RRTypeMX    dom = mapto name "MX" $ domMx dom
 nmc2pdns name RRTypeA     dom = mapto name "A" $ domIp dom
 nmc2pdns name RRTypeAAAA  dom = mapto name "AAAA" $ domIp6 dom
 nmc2pdns name RRTypeCNAME dom = takejust name "CNAME" $ domAlias dom
@@ -116,3 +118,12 @@ mapto name rrstr maybel = case maybel of
 takejust name rrstr maybestr = case maybestr of
   Nothing  -> []
   Just str -> [(name, rrstr, str)]
+
+makesrv name rrstr mayberl = case mayberl of
+  Nothing  -> []
+  Just srl  -> map (\x -> (name, rrstr, fmtsrv x)) srl
+    where
+      fmtsrv rl = (show (srvPrio rl)) ++ " "
+                ++ (show (srvWeight rl)) ++ " "
+                ++ (show (srvPort rl)) ++ " "
+                ++ (srvHost rl)

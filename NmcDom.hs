@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module NmcDom   ( NmcDom(..)
+                , NmcRRService(..)
                 , emptyNmcDom
                 , seedNmcDom
                 , descendNmcDom
@@ -97,6 +98,7 @@ data NmcDom = NmcDom    { domService     :: Maybe [NmcRRService]
                         , domTls         :: Maybe (Map String
                                                     (Map String [[String]]))
                         , domDs          :: Maybe [[String]]
+                        , domMx          :: Maybe [String] -- Synthetic
                         } deriving (Show, Eq)
 
 instance FromJSON NmcDom where
@@ -132,6 +134,7 @@ instance FromJSON NmcDom where
                 <*> o .:? "fingerprint"
                 <*> o .:? "tls"
                 <*> o .:? "ds"
+                <*> return Nothing -- domMx not parsed
         parseJSON _ = empty
 
 instance Mergeable NmcDom where
@@ -153,6 +156,7 @@ instance Mergeable NmcDom where
                                 , domFingerprint = mergelm domFingerprint
                                 , domTls =         mergelm domTls
                                 , domDs =          mergelm domDs
+                                , domMx =          mergelm domMx
                                 }
           where
                 mergelm x = merge (x sub) (x dom)
@@ -167,6 +171,7 @@ instance Mergeable NmcDom where
 emptyNmcDom = NmcDom Nothing Nothing Nothing Nothing Nothing Nothing
                      Nothing Nothing Nothing Nothing Nothing Nothing
                      Nothing Nothing Nothing Nothing Nothing Nothing
+                     Nothing
 
 -- | Perform query and return error string or parsed domain object
 queryNmcDom ::
@@ -242,7 +247,16 @@ normalizeDom dom = foldr id dom [ srvNormalizer
     translateNormalizer dom = case domTranslate dom of
       Nothing  -> dom
       Just tr  -> dom { domMap = Nothing }
-    srvNormalizer dom = dom { domService = Nothing }
+    srvNormalizer dom = dom { domService = Nothing, domMx = makemx }
+      where
+        makemx = case domService dom of
+          Nothing  -> Nothing
+          Just svl -> Just $ map makerec (filter needed svl)
+            where
+              needed sr = srvName sr == "smtp"
+                        && srvProto sr == "tcp"
+                        && srvPort sr == 25
+              makerec sr = (show (srvPrio sr)) ++ " " ++ (srvHost sr)
 
 -- | Merge imports and Selfs and follow the maps tree to get dom
 descendNmcDom ::
