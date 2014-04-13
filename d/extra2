@@ -1,1 +1,1 @@
-{"ip":["5.6.7.8"]}
+{"ip":["5.6.7.8"],"alias":"extra2alias","service":[["imap", "tcp", 0, 0, 143, "mail.host.com."]]}

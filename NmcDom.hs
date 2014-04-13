@@ -9,12 +9,34 @@ module NmcDom   ( NmcDom(..)
 import Prelude hiding (length)
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.Text as T (unpack)
+import Data.List as L (union)
 import Data.List.Split
 import Data.Char
-import Data.Map as M (Map, lookup, delete, size)
+import Data.Map as M (Map, lookup, delete, size, union)
 import Data.Vector (toList,(!),length)
 import Control.Applicative ((<$>), (<*>), empty)
 import Data.Aeson
+
+class Mergeable a where
+        merge :: a -> a -> a -- bias towads second arg
+
+instance Ord k => Mergeable (Map k a) where
+        merge mx my = M.union my mx
+
+-- instance Mergeable String where
+--         merge _ b = b
+
+instance Mergeable Value where
+        merge _ b = b
+
+instance Mergeable a => Mergeable (Maybe a) where
+        merge (Just x) (Just y) = Just (merge x y)
+        merge Nothing  (Just y) = Just y
+        merge (Just x) Nothing  = Just x
+        merge Nothing  Nothing  = Nothing
+
+instance Eq a => Mergeable [a] where
+        merge xs ys = L.union xs ys
 
 data NmcRRService = NmcRRService
                         { srvName       :: String
@@ -37,6 +59,9 @@ instance FromJSON NmcRRService where
                 else empty
         parseJSON _ = empty
 
+instance Mergeable NmcRRService where
+        merge _ b = b
+
 data NmcRRI2p = NmcRRI2p
                         { i2pDestination :: String
                         , i2pName        :: String
@@ -49,6 +74,9 @@ instance FromJSON NmcRRI2p where
                 <*> o .: "name"
                 <*> o .: "b32"
         parseJSON _ = empty
+
+instance Mergeable NmcRRI2p where
+        merge _ b = b
 
 data NmcDom = NmcDom    { domService     :: Maybe [NmcRRService]
                         , domIp          :: Maybe [String]
@@ -106,36 +134,39 @@ instance FromJSON NmcDom where
                 <*> o .:? "ds"
         parseJSON _ = empty
 
+instance Mergeable NmcDom where
+        merge sub dom = dom     { domService =     mergelm domService
+                                , domIp =          mergelm domIp
+                                , domIp6 =         mergelm domIp6
+                                , domTor =         choose  domTor
+                                , domI2p =         mergelm domI2p
+                                , domFreenet =     choose  domFreenet
+                                , domAlias =       choose  domAlias
+                                , domTranslate =   choose  domTranslate
+                                , domEmail =       choose  domEmail
+                                , domLoc =         choose  domLoc
+                                , domInfo =        mergelm domInfo
+                                , domNs =          mergelm domNs
+                                , domDelegate =    mergelm domDelegate
+                                , domImport =      choose  domImport
+                                , domMap =         mergelm domMap
+                                , domFingerprint = mergelm domFingerprint
+                                , domTls =         mergelm domTls
+                                , domDs =          mergelm domDs
+                                }
+          where
+                mergelm x = merge (x sub) (x dom)
+-- Because it is not possible to define instance of merge for Strings,
+-- we have to treat string elements separately, otherwise strings are
+-- 'unioned' along with the rest of lists. Ugly, but alternatives are worse.
+                choose field = case field dom of
+                        Nothing -> field sub
+                        Just x  -> Just x
+
+
 emptyNmcDom = NmcDom Nothing Nothing Nothing Nothing Nothing Nothing
                      Nothing Nothing Nothing Nothing Nothing Nothing
                      Nothing Nothing Nothing Nothing Nothing Nothing
-
--- FIXME -- I hope there exists a better way to merge records!
-mergeNmcDom :: NmcDom -> NmcDom -> NmcDom
-mergeNmcDom sub dom = dom  { domService = choose domService
-                        , domIp =          choose domIp
-                        , domIp6 =         choose domIp6
-                        , domTor =         choose domTor
-                        , domI2p =         choose domI2p
-                        , domFreenet =     choose domFreenet
-                        , domAlias =       choose domAlias
-                        , domTranslate =   choose domTranslate
-                        , domEmail =       choose domEmail
-                        , domLoc =         choose domLoc
-                        , domInfo =        choose domInfo
-                        , domNs =          choose domNs
-                        , domDelegate =    choose domDelegate
-                        , domImport =      choose domImport
-                        , domMap =         choose domMap
-                        , domFingerprint = choose domFingerprint
-                        , domTls =         choose domTls
-                        , domDs =          choose domDs
-                        }
-  where
-    choose :: (NmcDom -> Maybe a) -> Maybe a
-    choose field = case field dom of
-      Nothing -> field sub
-      Just x  -> Just x
 
 -- | Perform query and return error string or parsed domain object
 queryNmcDom ::
@@ -168,7 +199,7 @@ mergeImport queryOp base = do
       sub <- queryNmcDom queryOp key
       case sub of
         Left  e    -> return $ Left e
-        Right sub' -> mergeImport queryOp $ sub' `mergeNmcDom` base'
+        Right sub' -> mergeImport queryOp $ sub' `merge` base'
 
 -- | If there is an element in the map with key "", merge the contents
 --   and remove this element. Do this recursively.
@@ -186,7 +217,7 @@ mergeSelf base =
       Just map' ->
         case M.lookup "" map' of
           Nothing  -> base'
-          Just sub -> (mergeSelf sub) `mergeNmcDom` base'
+          Just sub -> (mergeSelf sub) `merge` base'
 
 -- | Presence of some elements require removal of some others
 normalizeDom :: NmcDom -> NmcDom
