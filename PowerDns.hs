@@ -85,45 +85,46 @@ pdnsOut ver id name rrtype edom =
 
 nmc2pdns :: String -> RRType -> NmcDom -> [(String, String, String)]
 nmc2pdns name RRTypeANY   dom =
-  foldr (\r accum -> (nmc2pdns name r dom) ++ accum) []
+  foldr (\r accum -> (nmc2pdns r) ++ accum) []
     [RRTypeSRV, RRTypeA, RRTypeAAAA, RRTypeCNAME, RRTypeDNAME,
      RRTypeSOA, RRTypeRP, RRTypeLOC, RRTypeNS, RRTypeDS, RRTypeMX]
-nmc2pdns name RRTypeSRV   dom = makesrv name "SRV" $ domService dom
-nmc2pdns name RRTypeMX    dom = mapto name "MX" $ domMx dom
-nmc2pdns name RRTypeA     dom = mapto name "A" $ domIp dom
-nmc2pdns name RRTypeAAAA  dom = mapto name "AAAA" $ domIp6 dom
-nmc2pdns name RRTypeCNAME dom = takejust name "CNAME" $ domAlias dom
-nmc2pdns name RRTypeDNAME dom = takejust name "DNAME" $ domTranslate dom
-nmc2pdns name RRTypeSOA   dom = -- FIXME generate only for top domain
-  if dom == emptyNmcDom then []
-  else
-    let
-      email = case domEmail dom of
-        Nothing   -> "hostmaster." ++ name
-        Just addr ->
-          let (aname, adom) = break (== '@') addr
-          in case adom of
-            "" -> aname
-            _  -> aname ++ "." ++ (tail adom)
-    in [(name, "SOA", email ++ " 99999999 10800 3600 604800 86400")]
-nmc2pdns name RRTypeRP    dom = [] --FIXME
-nmc2pdns name RRTypeLOC   dom = takejust name "LOC" $ domLoc dom
-nmc2pdns name RRTypeNS    dom = mapto name "NS" $ domNs dom
-nmc2pdns name RRTypeDS    dom = [] --FIXME
-
-mapto name rrstr maybel = case maybel of
-  Nothing  -> []
-  Just l   -> map (\x -> (name, rrstr, x)) l
-
-takejust name rrstr maybestr = case maybestr of
-  Nothing  -> []
-  Just str -> [(name, rrstr, str)]
-
-makesrv name rrstr mayberl = case mayberl of
-  Nothing  -> []
-  Just srl  -> map (\x -> (name, rrstr, fmtsrv x)) srl
-    where
-      fmtsrv rl = (show (srvPrio rl)) ++ " "
-                ++ (show (srvWeight rl)) ++ " "
-                ++ (show (srvPort rl)) ++ " "
-                ++ (srvHost rl)
+  where
+    nmc2pdns RRTypeSRV   = makesrv  "SRV"   $ domService dom
+    nmc2pdns RRTypeMX    = mapto    "MX"    $ domMx dom
+    nmc2pdns RRTypeA     = mapto    "A"     $ domIp dom
+    nmc2pdns RRTypeAAAA  = mapto    "AAAA"  $ domIp6 dom
+    nmc2pdns RRTypeCNAME = takejust "CNAME" $ domAlias dom
+    nmc2pdns RRTypeDNAME = takejust "DNAME" $ domTranslate dom
+    nmc2pdns RRTypeSOA   = -- FIXME generate only for top domain
+      if dom == emptyNmcDom then []
+      else
+        let
+          email = case domEmail dom of
+            Nothing   -> "hostmaster." ++ name
+            Just addr ->
+              let (aname, adom) = break (== '@') addr
+              in case adom of
+                "" -> aname
+                _  -> aname ++ "." ++ (tail adom)
+        in [(name, "SOA", email ++ " 99999999 10800 3600 604800 86400")]
+    nmc2pdns RRTypeRP    = [] --FIXME
+    nmc2pdns RRTypeLOC   = takejust "LOC"  $ domLoc dom
+    nmc2pdns RRTypeNS    = mapto    "NS"   $ domNs dom
+    nmc2pdns RRTypeDS    = [] --FIXME
+    
+    mapto rrstr maybel = case maybel of
+      Nothing  -> []
+      Just l   -> map (\x -> (name, rrstr, x)) l
+    
+    takejust rrstr maybestr = case maybestr of
+      Nothing  -> []
+      Just str -> [(name, rrstr, str)]
+    
+    makesrv rrstr mayberl = case mayberl of
+      Nothing  -> []
+      Just srl  -> map (\x -> (name, rrstr, fmtsrv x)) srl
+        where
+          fmtsrv rl = (show (srvPrio rl)) ++ " "
+                    ++ (show (srvWeight rl)) ++ " "
+                    ++ (show (srvPort rl)) ++ " "
+                    ++ (srvHost rl)
