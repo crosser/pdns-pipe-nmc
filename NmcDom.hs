@@ -9,14 +9,30 @@ module NmcDom   ( NmcDom(..)
 
 import Prelude hiding (length)
 import Data.ByteString.Lazy (ByteString)
-import qualified Data.Text as T (unpack)
+import Data.Text (Text, unpack)
 import Data.List as L (union)
 import Data.List.Split
 import Data.Char
 import Data.Map as M (Map, lookup, delete, size, union)
-import Data.Vector (toList,(!),length)
-import Control.Applicative ((<$>), (<*>), empty)
+import Data.Vector (toList,(!),length, singleton)
+import Control.Applicative ((<$>), (<*>), empty, pure)
 import Data.Aeson
+
+import qualified Data.HashMap.Strict as H
+import Data.Aeson.Types
+
+-- Variant of Aeson's `.:?` that interprets a String as a
+-- single-element list, so it is possible to have either
+--      "ip":["1.2.3.4"]
+-- or
+--      "ip":"1.2.3.4"
+-- with the same result.
+(.:/) :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
+obj .:/ key = case H.lookup key obj of
+               Nothing -> pure Nothing
+               Just v  -> case v of
+                        String s -> parseJSON $ Array (singleton v)
+                        _        -> parseJSON v
 
 class Mergeable a where
         merge :: a -> a -> a -- bias towads second arg
@@ -91,7 +107,7 @@ data NmcDom = NmcDom    { domService     :: Maybe [NmcRRService]
                         , domLoc         :: Maybe String
                         , domInfo        :: Maybe Value
                         , domNs          :: Maybe [String]
-                        , domDelegate    :: Maybe [String]
+                        , domDelegate    :: Maybe String
                         , domImport      :: Maybe String
                         , domMap         :: Maybe (Map String NmcDom)
                         , domFingerprint :: Maybe [String]
@@ -110,15 +126,15 @@ instance FromJSON NmcDom where
                             then emptyNmcDom { domIp = Just [s'] }
                             else emptyNmcDom
                           where
-                            s' = T.unpack s
+                            s' = unpack s
                             isIPv4 x = all isNibble $ splitOn "." x
                             isNibble x =
                               if all isDigit x then (read x :: Int) < 256
                               else False
         parseJSON (Object o) = NmcDom
                 <$> o .:? "service"
-                <*> o .:? "ip"
-                <*> o .:? "ip6"
+                <*> o .:/ "ip"
+                <*> o .:/ "ip6"
                 <*> o .:? "tor"
                 <*> o .:? "i2p"
                 <*> o .:? "freenet"
@@ -127,11 +143,11 @@ instance FromJSON NmcDom where
                 <*> o .:? "email"
                 <*> o .:? "loc"
                 <*> o .:? "info"
-                <*> o .:? "ns"
+                <*> o .:/ "ns"
                 <*> o .:? "delegate"
                 <*> o .:? "import"
                 <*> o .:? "map"
-                <*> o .:? "fingerprint"
+                <*> o .:/ "fingerprint"
                 <*> o .:? "tls"
                 <*> o .:? "ds"
                 <*> return Nothing -- domMx not parsed
