@@ -13,7 +13,7 @@ import Data.Text (Text, unpack)
 import Data.List as L (union)
 import Data.List.Split
 import Data.Char
-import Data.Map as M (Map, lookup, delete, size, union)
+import Data.Map as M (Map, lookup, delete, size, unionWith)
 import Data.Vector (toList,(!),length, singleton)
 import Control.Applicative ((<$>), (<*>), empty, pure)
 import Data.Aeson
@@ -37,8 +37,8 @@ obj .:/ key = case H.lookup key obj of
 class Mergeable a where
         merge :: a -> a -> a -- bias towads second arg
 
-instance Ord k => Mergeable (Map k a) where
-        merge mx my = M.union my mx
+instance (Ord k, Mergeable a) => Mergeable (Map k a) where
+        merge mx my = M.unionWith merge my mx
 
 -- instance Mergeable String where
 --         merge _ b = b
