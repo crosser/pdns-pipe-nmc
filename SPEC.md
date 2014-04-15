@@ -9,26 +9,26 @@
 
 `DomObj` is a JSON `Map`, with the following attributes, all optional:
 
-| Key         | Type                                  | Comment                         |
-|-------------|---------------------------------------|---------------------------------|
-| service     | Array(SrvObj)                         | Located two levels above pos.   |
-| ip          | Array(String)                         | Dotted quad "1.2.3.4"           |
-| ip6         | Array(String)                         | Semicolon format "DEAD::BEEF"   |
-| tor         | String                                | Onion name                      |
-| i2p         | I2pObj                                |                                 |
-| freenet     | String                                |                                 |
-| alias       | String                                | Nullifies other attributes      |
-| translate   | String                                | Nullifies other attributes      |
-| email       | String                                | Used in `SOA`                   |
-| loc         | String                                | Format suitable for `LOC`       |
-| info        | JsonObj                               | Currently unspecified           |
-| ns          | Array(String)                         | Domain names as in `NS`         |
-| delegate    | String                                | Replaces current object         |
-| import      | String                                | "Deep" merges into current obj. |
-| map         | Map(String:DomObj)                    | Tree of subdomain objects       |
-| fingerprint | Array(String)                         |                                 |
-| tls         | Map(String:Map(String:Array(TlsObj))) |                                 |
-| ds          | Array(DsObj)                          |                                 |
+| Key         | Type                                  | Comment                                    |
+|-------------|---------------------------------------|--------------------------------------------|
+| service     | Array(SrvObj)                         | Located two levels above pos.              |
+| ip          | Array(String)                         | Dotted quad "1.2.3.4"                      |
+| ip6         | Array(String)                         | Semicolon format "DEAD::BEEF"              |
+| tor         | String                                | Onion name                                 |
+| i2p         | I2pObj                                |                                            |
+| freenet     | String                                |                                            |
+| alias       | String                                | Nullifies other attributes                 |
+| translate   | String                                | Nullifies other attributes                 |
+| email       | String                                | Used in `SOA`                              |
+| loc         | String                                | Format suitable for `LOC`                  |
+| info        | JsonObj                               | Currently unspecified                      |
+| ns          | Array(String)                         | Domain names as in `NS`                    |
+| delegate    | String                                | Replaces current object                    |
+| import      | String                                | "Deep" merges into current obj.            |
+| map         | Map(String:DomObj)                    | Tree of subdomain objects                  |
+| fingerprint | Array(String)                         |                                            |
+| tls         | Map(String:Map(String:Array(TlsObj))) | Outer `Map` by `Protocol`, inner by `Port` |
+| ds          | Array(DsObj)                          |                                            |
 
 #### Notes:
 
