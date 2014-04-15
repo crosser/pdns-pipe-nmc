@@ -9,7 +9,7 @@ or a JSON `Map`, with the following attributes, all optional:
 
 | Key         | Type                                  | Comment                                    |
 |-------------|---------------------------------------|--------------------------------------------|
-| service     | Array(SrvObj)                         | Located two levels above pos.              |
+| service     | Array(SrvObj)                         | Located two levels above position          |
 | ip          | Array(String)                         | Dotted quad format "1.2.3.4"               |
 | ip6         | Array(String)                         | Semicolon format "DEAD::BEEF"              |
 | tor         | String                                | Onion name                                 |
@@ -22,7 +22,7 @@ or a JSON `Map`, with the following attributes, all optional:
 | info        | JsonObj                               | Currently unspecified                      |
 | ns          | Array(String)                         | Domain names as in `NS`                    |
 | delegate    | String                                | Replaces current object                    |
-| import      | Array(String)                         | "Deep" merges into current obj.            |
+| import      | Array(String)                         | "Deep" merges into current object          |
 | map         | Map(String:DomObj)                    | Tree of subdomain objects                  |
 | fingerprint | Array(String)                         |                                            |
 | tls         | Map(String:Map(String:Array(TlsObj))) | Outer `Map` by `Protocol`, inner by `Port` |
@@ -85,6 +85,12 @@ or a JSON `Map`, with the following attributes, all optional:
 
 ## Data Interpretation
 
+### Semantics of the Attributes
+
+...FIXME
+
+### Lookup Sequence
+
 Assuming a query is performed for
 `sdN`++"."++{...}++"."++`sd2`++"."++`sd1`++"."++`dom`++".bit"
 (`sdX` list possibly being empty), the lookup process starts by
@@ -118,7 +124,7 @@ recursive sequece:
 
 Note that the process involves recursion nested to three levels.
 
-## Merging
+### Merging Procedure
 
 When a domain object `sub` needs merging into a domain object `base`,
 the following rules are applied:
