@@ -22,7 +22,7 @@ or a JSON `Map`, with the following attributes, all optional:
 | info        | JsonObj                               | Currently unspecified                      |
 | ns          | Array(String)                         | Domain names as in `NS`                    |
 | delegate    | String                                | Replaces current object                    |
-| import      | String                                | "Deep" merges into current obj.            |
+| import      | Array(String)                         | "Deep" merges into current obj.            |
 | map         | Map(String:DomObj)                    | Tree of subdomain objects                  |
 | fingerprint | Array(String)                         |                                            |
 | tls         | Map(String:Map(String:Array(TlsObj))) | Outer `Map` by `Protocol`, inner by `Port` |
@@ -88,9 +88,10 @@ or a JSON `Map`, with the following attributes, all optional:
 Assuming a query is performed for
 `sdN`++"."++{...}++"."++`sd2`++"."++`sd1`++"."++`dom`++".bit"
 (`sdX` list possibly being empty), the lookup process starts by
-populating a "seed" DomObj with a single attribute `"import"`
-the value of which corresponds to the `dom` name in the
-Namecoin namespace, currently `"d/" ++ dom`.
+querying the database for the object corresponding to `dom`.
+Technically, it is easiest to populate a "seed" DomObj with a
+single attribute `"import"` the value of which corresponds to the
+`dom` name in the Namecoin namespace, which is `"d/" ++ dom`.
 This domain object is then transformed by the following
 recursive sequece:
 
@@ -100,8 +101,8 @@ recursive sequece:
 2. If attribute `"import"` does not exist in the resulting object,
    recursion stops, and step 3 is performed on the result
    If attribute `"import"` exists in the resulting object, lookup is
-   is performed for the value of this attribute, and fetched object
-   is recursively merged into the base domain. The `"import"` attribute
+   is performed for the values of this attribute, and fetched objects
+   are recursively merged into the base domain. The `"import"` attribute
    is removed from the result. Then the result is passed as base
    domain to step 1.
 3. If subdomain chain is empty, recursion stops, and step 4 is

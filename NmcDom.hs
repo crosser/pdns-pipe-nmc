@@ -15,6 +15,7 @@ import Data.List.Split
 import Data.Char
 import Data.Map as M (Map, lookup, delete, size, unionWith)
 import Data.Vector (toList,(!),length, singleton)
+import Control.Monad (foldM)
 import Control.Applicative ((<$>), (<*>), empty, pure)
 import Data.Aeson
 
@@ -40,6 +41,7 @@ class Mergeable a where
 instance (Ord k, Mergeable a) => Mergeable (Map k a) where
         merge mx my = M.unionWith merge my mx
 
+-- Alas, the following is not possible in Haskell :-(
 -- instance Mergeable String where
 --         merge _ b = b
 
@@ -146,7 +148,7 @@ data NmcDom = NmcDom    { domService     :: Maybe [NmcRRService]
                         , domInfo        :: Maybe Value
                         , domNs          :: Maybe [String]
                         , domDelegate    :: Maybe String
-                        , domImport      :: Maybe String
+                        , domImport      :: Maybe [String]
                         , domMap         :: Maybe (Map String NmcDom)
                         , domFingerprint :: Maybe [String]
                         , domTls         :: Maybe (Map String
@@ -183,7 +185,7 @@ instance FromJSON NmcDom where
                 <*> o .:? "info"
                 <*> o .:/ "ns"
                 <*> o .:? "delegate"
-                <*> o .:? "import"
+                <*> o .:/ "import"
                 <*> o .:? "map"
                 <*> o .:/ "fingerprint"
                 <*> o .:? "tls"
@@ -205,7 +207,7 @@ instance Mergeable NmcDom where
                                 , domInfo =        mergelm domInfo
                                 , domNs =          mergelm domNs
                                 , domDelegate =    mergelm domDelegate
-                                , domImport =      choose  domImport
+                                , domImport =      mergelm domImport
                                 , domMap =         mergelm domMap
                                 , domFingerprint = mergelm domFingerprint
                                 , domTls =         mergelm domTls
@@ -256,11 +258,14 @@ mergeImport queryOp depth base = do
   if depth <= 0 then return $ Left "Nesting of imports is too deep"
   else case domImport mbase of
     Nothing  -> return $ Right base'
-    Just key -> do
-      sub <- queryNmcDom queryOp key
-      case sub of
-        Left  e    -> return $ Left e
-        Right sub' -> mergeImport queryOp (depth - 1) $ sub' `merge` base'
+    Just keys -> foldM mergeImport1 (Right base') keys
+      where
+        mergeImport1 (Left  err) _   = return $ Left err
+        mergeImport1 (Right acc) key = do
+          sub <- queryNmcDom queryOp key
+          case sub of
+            Left  err  -> return $ Left err
+            Right sub' -> mergeImport queryOp (depth - 1) $ sub' `merge` acc
 
 -- | If there is an element in the map with key "", merge the contents
 --   and remove this element. Do this recursively.
@@ -339,4 +344,4 @@ descendNmcDom queryOp subdom base = do
 seedNmcDom ::
   String        -- ^ domain key (without namespace prefix)
   -> NmcDom     -- ^ resulting seed domain
-seedNmcDom dn = emptyNmcDom { domImport = Just ("d/" ++ dn)}
+seedNmcDom dn = emptyNmcDom { domImport = Just (["d/" ++ dn])}
