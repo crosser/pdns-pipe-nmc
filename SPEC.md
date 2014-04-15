@@ -2,17 +2,15 @@
 
 ## Data Format
 
-`DomObj` is a JSON object, specifically a `Map` (not an `Array`), or a
-`String` containing a dotted quad (see Note below).
-
 ### `DomObj` Object
 
-`DomObj` is a JSON `Map`, with the following attributes, all optional:
+`DomObj` either a `String` containing a dotted quad (see Note below),
+or a JSON `Map`, with the following attributes, all optional:
 
 | Key         | Type                                  | Comment                                    |
 |-------------|---------------------------------------|--------------------------------------------|
 | service     | Array(SrvObj)                         | Located two levels above pos.              |
-| ip          | Array(String)                         | Dotted quad "1.2.3.4"                      |
+| ip          | Array(String)                         | Dotted quad format "1.2.3.4"               |
 | ip6         | Array(String)                         | Semicolon format "DEAD::BEEF"              |
 | tor         | String                                | Onion name                                 |
 | i2p         | I2pObj                                |                                            |
@@ -33,13 +31,12 @@
 #### Notes:
 
 * Any attribute specified as `Array(String)` may be present in the
-  JSON document as `String`, which is interpreted the same way as
-  an `Array` containing a single `String` element.
-* In any place where `DomObj` is expected there may be a `String`, which
-  is interpreted as an IPv4 address. In other words, a string `"1.2.3.4"`
-  is interpreted the same way as the object `"{\"ip\":\"1.2.3.4\"}"`
-  Such "shorthand" DomObj can be present at the top level or as a value
-  in the `"map"` attribute.
+  JSON document as a plain `String`, which is interpreted the same way
+  as an `Array` containing a single `String` element.
+* If `DomObj` is a `String`, it is interpreted as an IPv4 address.
+  In other words, string `"1.2.3.4"` is the same as the Map
+  `"{\"ip\":\"1.2.3.4\"}"`. Such "shorthand" DomObj can be present at
+  the top level or as a value in the `"map"` attribute.
 
 ### `SrvObj` Object
 
@@ -59,11 +56,11 @@
 * `Service` and `Protocol` are two elements of the domain name, without
   the undescore '_'.
 * `SrvObj` with Service `"smtp"`, Protocol `"tcp"` and Port `25` is also
-  interpteted as an `MX` DNS respource.
+  interpteted as an `MX` DNS resource.
 * When lookup is performed for `SRV` records at fqdn
   `"_serv._proto.sub.dom.bit"`, domain object for `"sub.dom.bit"` must be
   fetched, and in this object, `SrvObj`s for the Service `"serv"` and
-  Protocol `"proto"` selected from it.
+  Protocol `"proto"` selected from its `"service"` attribute.
 
 ### `TlsObj` Object
 
@@ -88,10 +85,14 @@
 
 ## Data Interpretation
 
-Assuming a query for a subdomain of a basedomain in the `.bit` TLD
-(subdomain possibly being empty), lookup starts by fetching the
-"base" object for basedomain. The domain object is then transformed
-by the following sequece applied recursively:
+Assuming a query is performed for
+`sdN`++"."++{...}++"."++`sd2`++"."++`sd1`++"."++`dom`++".bit"
+(`sdX` list possibly being empty), the lookup process starts by
+populating a "seed" DomObj with a single attribute `"import"`
+the value of which corresponds to the `dom` name in the
+Namecoin namespace, currently `"d/" ++ dom`.
+This domain object is then transformed by the following
+recursive sequece:
 
 1. Value of the element of the `"map"` attribute with the key `""`
    (empty string) is recursively merged into the base domain. The
