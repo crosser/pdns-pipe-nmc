@@ -5,30 +5,32 @@
 `DomObj` is a JSON object, specifically a `Map` (not an `Array`), or a
 `String` containing a dotted quad (see Note below).
 
-### `DomObj` Attributes
+### `DomObj` Object
 
-| Key         | Type                 | Comment                         |
-|-------------|----------------------|---------------------------------|
-| service     | Array(SrvObj)        | Located two levels above pos.   |
-| ip          | Array(String)        | Dotted quad "1.2.3.4"           |
-| ip6         | Array(String)        | Semicolon format "DEAD::BEEF"   |
-| tor         | String               | Onion name                      |
-| i2p         | I2pObj               |                                 |
-| freenet     | String               |                                 |
-| alias       | String               | Nullifies other attributes      |
-| translate   | String               | Nullifies other attributes      |
-| email       | String               | Used in `SOA`                   |
-| loc         | String               | Format suitable for `LOC`       |
-| info        | JsonObj              | Currently unspecified           |
-| ns          | Array(String)        | Domain names as in `NS`         |
-| delegate    | String               | Nullifies other attributes      |
-| import      | String               | "Deep" merges into current obj. |
-| map         | Map(String:DomObj)   | Tree of subdomain objects       |
-| fingerprint | Array(String)        |                                 |
-| tls         | *TlsMap*             | See note below                  |
-| ds          | Array(Array(String)) |                                 |
+`DomObj` is a JSON `Map`, with the following attributes, all optional:
 
-### Notes:
+| Key         | Type                                  | Comment                         |
+|-------------|---------------------------------------|---------------------------------|
+| service     | Array(SrvObj)                         | Located two levels above pos.   |
+| ip          | Array(String)                         | Dotted quad "1.2.3.4"           |
+| ip6         | Array(String)                         | Semicolon format "DEAD::BEEF"   |
+| tor         | String                                | Onion name                      |
+| i2p         | I2pObj                                |                                 |
+| freenet     | String                                |                                 |
+| alias       | String                                | Nullifies other attributes      |
+| translate   | String                                | Nullifies other attributes      |
+| email       | String                                | Used in `SOA`                   |
+| loc         | String                                | Format suitable for `LOC`       |
+| info        | JsonObj                               | Currently unspecified           |
+| ns          | Array(String)                         | Domain names as in `NS`         |
+| delegate    | String                                | Replaces current object         |
+| import      | String                                | "Deep" merges into current obj. |
+| map         | Map(String:DomObj)                    | Tree of subdomain objects       |
+| fingerprint | Array(String)                         |                                 |
+| tls         | Map(String:Map(String:Array(TlsObj))) |                                 |
+| ds          | Array(DsObj)                          |                                 |
+
+#### Notes:
 
 * Any attribute specified as `Array(String)` may be present in the
   JSON document as `String`, which is interpreted the same way as
@@ -38,11 +40,8 @@
   is interpreted the same way as the object `"{\"ip\":\"1.2.3.4\"}"`
   Such "shorthand" DomObj can be present at the top level or as a value
   in the `"map"` attribute.
-* *TlsMap* is `Map(String:Map(String:Array(TlsObj)))`, where `TlsObj` is
-  a heterogenous Array of 3 elements: `[Int, String, Int]`. It is not
-  used by the DNS bridge.
 
-### SrvObj format
+### `SrvObj` Object
 
 `SrvObj` is a heterogenous Array of fixed size containing 6 elements:
 
@@ -55,7 +54,7 @@
 | 4 | Int    | Port     |
 | 5 | String | Hostname |
 
-### Notes
+#### Notes
 
 * `Service` and `Protocol` are two elements of the domain name, without
   the undescore '_'.
@@ -65,6 +64,27 @@
   `"_serv._proto.sub.dom.bit"`, domain object for `"sub.dom.bit"` must be
   fetched, and in this object, `SrvObj`s for the Service `"serv"` and
   Protocol `"proto"` selected from it.
+
+### `TlsObj` Object
+
+`TlsObj` is a heterogenous Array of fixed size containing 3 elements:
+
+| N | Type   | Meaning                                               |
+|---|--------|-------------------------------------------------------|
+| 0 | Int    | Match type - 0:Exact, 1:SHA-256, 2:SHA-512            |
+| 1 | String | Match value - certificate or hash of it as hex string |
+| 2 | Int    | Include subdomains - 0:No, 1:Yes                      |
+
+### `DsObj` Object
+
+`DsObj` is a heterogenous Array of fixed size containing 4 elements:
+
+| N | Type   | Meaning                  |
+|---|--------|--------------------------|
+| 0 | Int    | Key Tag                  |
+| 1 | Int    | Key Algorithm            |
+| 2 | Int    | Hash Type                |
+| 3 | String | Hash Value as hex string |
 
 ## Data Interpretation
 

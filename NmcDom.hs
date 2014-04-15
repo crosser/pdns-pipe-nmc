@@ -95,6 +95,44 @@ instance FromJSON NmcRRI2p where
 instance Mergeable NmcRRI2p where
         merge _ b = b
 
+data NmcRRTls = NmcRRTls
+                        { tlsMatchType  :: Int -- 0:exact 1:sha256 2:sha512
+                        , tlsMatchValue :: String
+                        , tlsIncSubdoms :: Int -- 1:enforce on subdoms 0:no
+                        } deriving (Show, Eq)
+
+instance FromJSON NmcRRTls where
+        parseJSON (Array a) =
+                if length a == 3 then NmcRRTls
+                        <$> parseJSON (a ! 0)
+                        <*> parseJSON (a ! 1)
+                        <*> parseJSON (a ! 2)
+                else empty
+        parseJSON _ = empty
+
+instance Mergeable NmcRRTls where
+        merge _ b = b
+
+data NmcRRDs = NmcRRDs
+                        { dsKeyTag      :: Int
+                        , dsAlgo        :: Int
+                        , dsHashType    :: Int
+                        , dsHashValue   :: String
+                        } deriving (Show, Eq)
+
+instance FromJSON NmcRRDs where
+        parseJSON (Array a) =
+                if length a == 4 then NmcRRDs
+                        <$> parseJSON (a ! 0)
+                        <*> parseJSON (a ! 1)
+                        <*> parseJSON (a ! 2)
+                        <*> parseJSON (a ! 3)
+                else empty
+        parseJSON _ = empty
+
+instance Mergeable NmcRRDs where
+        merge _ b = b
+
 data NmcDom = NmcDom    { domService     :: Maybe [NmcRRService]
                         , domIp          :: Maybe [String]
                         , domIp6         :: Maybe [String]
@@ -112,8 +150,8 @@ data NmcDom = NmcDom    { domService     :: Maybe [NmcRRService]
                         , domMap         :: Maybe (Map String NmcDom)
                         , domFingerprint :: Maybe [String]
                         , domTls         :: Maybe (Map String
-                                                    (Map String [[String]]))
-                        , domDs          :: Maybe [[String]]
+                                                    (Map String [NmcRRTls]))
+                        , domDs          :: Maybe [NmcRRDs]
                         , domMx          :: Maybe [String] -- Synthetic
                         } deriving (Show, Eq)
 
