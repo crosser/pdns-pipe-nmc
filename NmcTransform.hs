@@ -4,7 +4,9 @@ module NmcTransform ( seedNmcDom
 
 import Prelude hiding (lookup)
 import Data.ByteString.Lazy (ByteString)
-import Data.Map (empty, lookup, delete, size, singleton)
+import Data.Text.Lazy (splitOn, pack, unpack)
+import Data.Map.Lazy (empty, lookup, delete, size, singleton
+                     , foldrWithKey, insert, insertWith)
 import Control.Monad (foldM)
 import Data.Aeson (decode)
 
@@ -33,7 +35,7 @@ mergeImport ::
   -> IO (Either String NmcDom)              -- ^ result with merged import
 mergeImport queryOp depth base = do
   let
-    mbase = (expandSrv . mergeSelf) base
+    mbase = (expandSrv . splitSubdoms . mergeSelf) base
     base' = mbase {domImport = Nothing}
   -- print base
   if depth <= 0 then return $ Left "Nesting of imports is too deep"
@@ -96,6 +98,27 @@ expandSrv base =
                    && srvPort sr == 25
                 then Just [(show (srvPrio sr)) ++ " " ++ (srvHost sr)]
                 else Nothing
+
+-- | Convert map elements of the form "subN...sub2.sub1.dom.bit"
+--   into nested map and merge it
+splitSubdoms :: NmcDom -> NmcDom
+splitSubdoms base =
+  let
+    base' = base { domMap = Nothing }
+  in
+    case domMap base of
+      Nothing -> base'
+      Just sdmap -> (emptyNmcDom { domMap = Just sdmap' }) `mergeNmcDom` base'
+        where
+          sdmap' = foldrWithKey stow empty sdmap
+          stow fqdn sdom acc = insertWith mergeNmcDom fqdn' sdom' acc
+            where
+              (fqdn', sdom') =
+                nest (map unpack (splitOn (pack ".") (pack fqdn)), sdom)
+              nest ([], v)   = (fqdn, v) -- can split result be empty?
+              nest ([k], v)  = (k, v)
+              nest (k:ks, v) =
+                nest (ks, emptyNmcDom { domMap = Just (singleton k v) })
  
 -- | Presence of some elements require removal of some others
 normalizeDom :: NmcDom -> NmcDom
