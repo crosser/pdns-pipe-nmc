@@ -153,6 +153,7 @@ data NmcDom = NmcDom    { domService     :: Maybe [NmcRRService]
                                                     (Map String [NmcRRTls]))
                         , domDs          :: Maybe [NmcRRDs]
                         , domMx          :: Maybe [String] -- Synthetic
+                        , domSrv         :: Maybe [String] -- Synthetic
                         } deriving (Show, Eq)
 
 instance FromJSON NmcDom where
@@ -189,6 +190,7 @@ instance FromJSON NmcDom where
                 <*> o .:? "tls"
                 <*> o .:? "ds"
                 <*> return Nothing -- domMx not parsed
+                <*> return Nothing -- domSrv not parsed
         parseJSON _ = empty
 
 instance Mergeable NmcDom where
@@ -211,6 +213,7 @@ instance Mergeable NmcDom where
                                 , domTls =         mergelm domTls
                                 , domDs =          mergelm domDs
                                 , domMx =          mergelm domMx
+                                , domSrv =         mergelm domSrv
                                 }
           where
                 mergelm x = merge (x sub) (x dom)
@@ -227,4 +230,4 @@ mergeNmcDom = merge
 emptyNmcDom = NmcDom Nothing Nothing Nothing Nothing Nothing Nothing
                      Nothing Nothing Nothing Nothing Nothing Nothing
                      Nothing Nothing Nothing Nothing Nothing Nothing
-                     Nothing
+                     Nothing Nothing

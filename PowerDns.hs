@@ -86,7 +86,7 @@ pdnsOut ver id name rrtype edom = case edom of
         foldr (\r accum -> (n2p r) ++ accum) []
           [RRTypeSRV, RRTypeA, RRTypeAAAA, RRTypeCNAME, RRTypeDNAME,
            RRTypeSOA, RRTypeRP, RRTypeLOC, RRTypeNS, RRTypeDS, RRTypeMX]
-      n2p RRTypeSRV   = makesrv  "SRV"   $ domService dom
+      n2p RRTypeSRV   = mapto    "SRV"   $ domSrv dom
       n2p RRTypeMX    = mapto    "MX"    $ domMx dom
       n2p RRTypeA     = mapto    "A"     $ domIp dom
       n2p RRTypeAAAA  = mapto    "AAAA"  $ domIp6 dom
@@ -115,11 +115,3 @@ pdnsOut ver id name rrtype edom = case edom of
       takejust rrstr maybestr = case maybestr of
         Nothing  -> []
         Just str -> [(name, rrstr, str)]
-      makesrv  rrstr mayberl  = case mayberl of
-        Nothing  -> []
-        Just srl  -> map (\x -> (name, rrstr, fmtsrv x)) srl
-          where
-            fmtsrv rl = (show (srvPrio rl)) ++ " "
-                      ++ (show (srvWeight rl)) ++ " "
-                      ++ (show (srvPort rl)) ++ " "
-                      ++ (srvHost rl)

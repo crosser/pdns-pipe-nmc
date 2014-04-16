@@ -4,7 +4,7 @@ module NmcTransform ( seedNmcDom
 
 import Prelude hiding (lookup)
 import Data.ByteString.Lazy (ByteString)
-import Data.Map (lookup, delete, size)
+import Data.Map (empty, lookup, delete, size, singleton)
 import Control.Monad (foldM)
 import Data.Aeson (decode)
 
@@ -33,7 +33,7 @@ mergeImport ::
   -> IO (Either String NmcDom)              -- ^ result with merged import
 mergeImport queryOp depth base = do
   let
-    mbase = mergeSelf base
+    mbase = (expandSrv . mergeSelf) base
     base' = mbase {domImport = Nothing}
   -- print base
   if depth <= 0 then return $ Left "Nesting of imports is too deep"
@@ -68,17 +68,38 @@ mergeSelf base =
           Just sub -> (mergeSelf sub) `mergeNmcDom` base'
         -- recursion depth limited by the size of the record
 
--- | SRV case - remove everyting and filter SRV records
-normalizeSrv :: String -> String -> NmcDom -> NmcDom
-normalizeSrv serv proto dom =
-  emptyNmcDom {domService = fmap (filter needed) (domService dom)}
-    where
-      needed r = srvName r == serv && srvProto r == proto
-
+-- | replace Service with Srv down in the Map
+expandSrv :: NmcDom -> NmcDom
+expandSrv base =
+  let
+    base' = base { domService = Nothing }
+  in
+    case domService base of
+      Nothing -> base'
+      Just sl -> foldr addSrvMx base' sl
+        where
+          addSrvMx sr acc = sub1 `mergeNmcDom` acc
+            where
+              sub1 = emptyNmcDom { domMap = Just (singleton proto sub2)
+                                 , domMx = maybemx}
+              sub2 = emptyNmcDom { domMap = Just (singleton srvid sub3) }
+              sub3 = emptyNmcDom { domSrv = Just [srvStr] }
+              proto = "_" ++ (srvProto sr)
+              srvid = "_" ++ (srvName sr)
+              srvStr =  (show (srvPrio sr)) ++ " "
+                     ++ (show (srvWeight sr)) ++ " "
+                     ++ (show (srvPort sr)) ++ " "
+                     ++ (srvHost sr)
+              maybemx =
+                if srvName sr == "smtp"
+                   && srvProto sr == "tcp"
+                   && srvPort sr == 25
+                then Just [(show (srvPrio sr)) ++ " " ++ (srvHost sr)]
+                else Nothing
+ 
 -- | Presence of some elements require removal of some others
 normalizeDom :: NmcDom -> NmcDom
-normalizeDom dom = foldr id dom [ srvNormalizer
-                                , translateNormalizer
+normalizeDom dom = foldr id dom [ translateNormalizer
                                 , nsNormalizer
                                 ]
   where
@@ -88,16 +109,6 @@ normalizeDom dom = foldr id dom [ srvNormalizer
     translateNormalizer dom = case domTranslate dom of
       Nothing  -> dom
       Just tr  -> dom { domMap = Nothing }
-    srvNormalizer dom = dom { domService = Nothing, domMx = makemx }
-      where
-        makemx = case domService dom of
-          Nothing  -> Nothing
-          Just svl -> Just $ map makerec (filter needed svl)
-            where
-              needed sr = srvName sr == "smtp"
-                        && srvProto sr == "tcp"
-                        && srvPort sr == 25
-              makerec sr = (show (srvPrio sr)) ++ " " ++ (srvHost sr)
 
 -- | Merge imports and Selfs and follow the maps tree to get dom
 descendNmcDom ::
@@ -109,8 +120,6 @@ descendNmcDom queryOp subdom base = do
   base' <- mergeImport queryOp 10 base
   case subdom of
     []   -> return $ fmap normalizeDom base'
-    -- A hack to handle SRV records: don't descend if ["_prot","_serv"]
-    [('_':p),('_':s)] -> return $ fmap (normalizeSrv s p) base'
     d:ds ->
       case base' of
         Left err     -> return base'

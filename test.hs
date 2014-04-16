@@ -8,6 +8,7 @@ import Data.ByteString.Lazy (ByteString)
 import Data.ByteString.Lazy.Char8 (readFile)
 import System.IO.Error
 import Control.Exception
+import Text.Show.Pretty
 
 import NmcDom
 import NmcTransform
@@ -18,6 +19,5 @@ queryOp key = catch (readFile key >>= return . Right)
 
 main = do
         (d:_) <- getArgs
-        descendNmcDom queryOp []               (seedNmcDom d) >>= print
-        descendNmcDom queryOp ["_tcp","_smtp"] (seedNmcDom d) >>= print
+        descendNmcDom queryOp [] (seedNmcDom d) >>= putStrLn . ppShow
 
