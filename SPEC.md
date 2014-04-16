@@ -87,7 +87,96 @@ or a JSON `Map`, with the following attributes, all optional:
 
 ### Semantics of the Attributes
 
-...FIXME
+#### service attribute
+
+Translates to DNS `SRV` RR, only it is located in the subdomain tree
+two levels higher than the `SRV` record would. For example, a
+`"service"` attribute in the `"map"` hieararchy at the point
+corresponding to the FQDN "sub.dom.bit" with the value
+
+```
+"service": [ ["imap", "tcp", 0, 0, 143, "mail.host.com." ],
+             ["smtp", "tcp", 0, 0,  25, "relay.host.com."] ]
+```
+
+corresponds to two `SRV` RRs at two different points in the
+subdomain tree:
+
+```
+_imap._tcp.sub.dom.bit. IN SRV 0 0 143 mail.host.com.
+_smtp._tcp.sub.dom.bit. IN SRV 0 0  25 relay.host.com.
+```
+
+In addition to these, an `MX` RR is syntesized at the "sub.dom.bit"
+level:
+
+```
+sub.dom.bit. IN MX 0 relay.host.com.
+```
+
+#### ip attribute
+
+Contains a list of strings representing IPv4 addresses in dotted
+quad notation. For example,
+
+```
+"ip": ["1.2.3.4", "5.6.7.8"]
+```
+
+translates into a series of `A` RRs:
+
+```
+        IN A 1.2.3.4
+        IN A 5.6.7.8
+```
+
+#### ip6 attribute
+
+
+#### tor attribute
+
+
+#### i2p attribute
+
+
+#### freenet attribute
+
+
+#### alias attribute
+
+
+#### translate attribute
+
+
+#### email attribute
+
+
+#### loc attribute
+
+
+#### info attribute
+
+
+#### ns attribute
+
+
+#### delegate attribute
+
+
+#### import attribute
+
+
+#### map attribute
+
+
+#### fingerprint attribute
+
+
+#### tls attribute
+
+
+#### ds attribute
+
 
 ### Lookup Sequence
 
