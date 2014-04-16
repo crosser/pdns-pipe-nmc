@@ -10,6 +10,7 @@ import System.IO.Error
 import Control.Exception
 
 import NmcDom
+import NmcTransform
 
 queryOp :: String -> IO (Either String ByteString)
 queryOp key = catch (readFile key >>= return . Right)

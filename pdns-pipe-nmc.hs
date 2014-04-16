@@ -19,6 +19,7 @@ import Config
 import PowerDns
 import NmcRpc
 import NmcDom
+import NmcTransform
 
 confFile = "/etc/namecoin.conf"
 
