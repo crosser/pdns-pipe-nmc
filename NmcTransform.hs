@@ -25,31 +25,34 @@ queryNmcDom queryOp key = do
       Nothing  -> return $ Left $ "Unparseable value: " ++ (show str)
       Just dom -> return $ Right dom
 
--- | Try to fetch "import" object and merge it into the base domain
---   Original "import" element is removed, but new imports from the
---   imported objects are processed recursively until there are none.
-mergeImport ::
+-- | Try to fetch "delegate" or "import" object and merge them into the
+--   base domain. Original "import" element is removed, but newly
+--   merged data may contain new "import" or "delegate", so the objects
+--   that are about to be merged are processed recursively until there
+--   are no more "import" and "deletage" attributes (or the depth gauge
+--   reaches zero).
+mergeIncl ::
   (String -> IO (Either String ByteString)) -- ^ query operation action
   -> Int                                    -- ^ recursion counter
   -> NmcDom                                 -- ^ base domain
   -> IO (Either String NmcDom)              -- ^ result with merged import
-mergeImport queryOp depth base = do
+mergeIncl queryOp depth base = do
   let
     mbase = (expandSrv . splitSubdoms . mergeSelf) base
-    base' = mbase {domImport = Nothing}
+    base' = mbase {domDelegate = Nothing, domImport = Nothing}
   -- print base
   if depth <= 0 then return $ Left "Nesting of imports is too deep"
   else case ((domDelegate mbase), (domImport mbase)) of
     (Nothing,  Nothing  ) -> return $ Right base'
-    (Nothing,  Just keys) -> foldM mergeImport1 (Right base') keys
-    (Just key, _        ) -> mergeImport1 (Right emptyNmcDom) key
+    (Nothing,  Just keys) -> foldM mergeIncl1 (Right base') keys
+    (Just key, _        ) -> mergeIncl1 (Right emptyNmcDom) key
   where
-    mergeImport1 (Left  err) _   = return $ Left err -- can never happen
-    mergeImport1 (Right acc) key = do
+    mergeIncl1 (Left  err) _   = return $ Left err -- can never happen
+    mergeIncl1 (Right acc) key = do
       sub <- queryNmcDom queryOp key
       case sub of
         Left  err  -> return $ Left err
-        Right sub' -> mergeImport queryOp (depth - 1) $ sub' `mergeNmcDom` acc
+        Right sub' -> mergeIncl queryOp (depth - 1) $ sub' `mergeNmcDom` acc
 
 -- | If there is an element in the map with key "", merge the contents
 --   and remove this element. Do this recursively.
@@ -140,7 +143,7 @@ descendNmcDom ::
   -> NmcDom                                 -- ^ base domain
   -> IO (Either String NmcDom)              -- ^ fully processed result
 descendNmcDom queryOp subdom base = do
-  base' <- mergeImport queryOp 10 base
+  base' <- mergeIncl queryOp 10 base
   case subdom of
     []   -> return $ fmap normalizeDom base'
     d:ds ->
