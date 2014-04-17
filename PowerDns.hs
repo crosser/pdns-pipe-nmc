@@ -85,7 +85,7 @@ pdnsOut ver id name rrtype edom = case edom of
       n2p RRTypeANY   =
         foldr (\r accum -> (n2p r) ++ accum) []
           [RRTypeSRV, RRTypeA, RRTypeAAAA, RRTypeCNAME, RRTypeDNAME,
-           RRTypeSOA, RRTypeRP, RRTypeLOC, RRTypeNS, RRTypeDS, RRTypeMX]
+           RRTypeRP, RRTypeLOC, RRTypeNS, RRTypeDS, RRTypeMX]
       n2p RRTypeSRV   = mapto    "SRV"   $ domSrv dom
       n2p RRTypeMX    = mapto    "MX"    $ domMx dom
       n2p RRTypeA     = mapto    "A"     $ domIp dom
@@ -93,21 +93,33 @@ pdnsOut ver id name rrtype edom = case edom of
       n2p RRTypeCNAME = takejust "CNAME" $ domAlias dom
       n2p RRTypeDNAME = takejust "DNAME" $ domTranslate dom
       n2p RRTypeSOA   = -- FIXME generate only for top domain
+                        -- FIXME make realistic version field
+                        -- FIXME make realistic nameserver field
         if dom == emptyNmcDom then []
-        else
-          let
+        else [(name, "SOA", "ns " ++ email ++ " 99999 10800 3600 604800 86400")]
+          where
             email = case domEmail dom of
               Nothing   -> "hostmaster." ++ name
-              Just addr ->
-                let (aname, adom) = break (== '@') addr
-                in case adom of
-                  "" -> aname
-                  _  -> aname ++ "." ++ (tail adom)
-          in [(name, "SOA", email ++ " 99999999 10800 3600 604800 86400")]
-      n2p RRTypeRP    = [] --FIXME
+              Just addr -> dotmail addr
+      n2p RRTypeRP    = case domEmail dom of
+        Nothing   -> []
+        Just addr -> [(name, "RP", (dotmail addr) ++ " .")]
       n2p RRTypeLOC   = takejust "LOC"  $ domLoc dom
       n2p RRTypeNS    = mapto    "NS"   $ domNs dom
-      n2p RRTypeDS    = [] --FIXME
+      n2p RRTypeDS    = case domDs dom of
+        Nothing  -> []
+        Just dss -> map (\x -> (name, "DS", dsStr x)) dss
+          where
+            dsStr x = (show (dsKeyTag x)) ++ " "
+                   ++ (show (dsAlgo x)) ++ " "
+                   ++ (show (dsHashType x)) ++ " "
+                   ++ (dsHashValue x)
+
+      dotmail addr = 
+        let (aname, adom) = break (== '@') addr
+        in case adom of
+          "" -> aname
+          _  -> aname ++ "." ++ (tail adom)
       
       mapto    rrstr maybel   = case maybel of
         Nothing  -> []

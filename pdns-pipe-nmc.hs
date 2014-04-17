@@ -101,7 +101,8 @@ mainPdnsNmc = do
       Right preq -> do
         case preq of
           PdnsRequestQ qname qtype id _ _ _ ->
-            queryDom (queryOpNmc cfg mgr id) qname >>= putStr . (pdnsOut ver id qname qtype)
+            queryDom (queryOpNmc cfg mgr id) qname
+              >>= putStr . (pdnsOut ver id qname qtype)
           PdnsRequestAXFR xfrreq ->
             putStr $ pdnsReport ("No support for AXFR " ++ xfrreq)
           PdnsRequestPing -> putStrLn "END"

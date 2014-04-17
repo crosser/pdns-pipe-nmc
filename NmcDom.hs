@@ -4,6 +4,7 @@ module NmcDom   ( NmcDom(..)
                 , NmcRRService(..)
                 , NmcRRI2p(..)
                 , NmcRRTls(..)
+                , NmcRRDs(..)
                 , emptyNmcDom
                 , mergeNmcDom
                 ) where
