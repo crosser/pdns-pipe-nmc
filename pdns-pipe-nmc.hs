@@ -2,7 +2,7 @@
 
 module Main where
 
-import Prelude hiding (readFile)
+import Prelude hiding (lookup, readFile)
 import System.Environment
 import System.IO hiding (readFile)
 import System.IO.Error
@@ -15,7 +15,7 @@ import qualified Data.ByteString.Char8 as C (pack)
 import qualified Data.ByteString.Lazy.Char8 as L (pack)
 import qualified Data.Text as T (pack)
 import Data.List.Split
-import Data.Map.Lazy (Map, empty, insert, delete, size)
+import Data.Map.Lazy (Map, empty, lookup, insert, delete, size)
 import Data.Aeson (encode, decode, Value(..))
 import Network.HTTP.Types
 import Data.Conduit
@@ -32,7 +32,7 @@ confFile = "/etc/namecoin.conf"
 
 -- HTTP/JsonRpc interface
 
-qReq :: Config -> String -> String -> Request m
+qReq :: Config -> String -> Int -> Request m
 qReq cf q id = applyBasicAuth (C.pack (rpcuser cf)) (C.pack (rpcpassword cf))
              $ def { host           = (C.pack (rpchost cf))
                    , port           = (rpcport cf)
@@ -45,7 +45,7 @@ qReq cf q id = applyBasicAuth (C.pack (rpcuser cf)) (C.pack (rpcpassword cf))
                                       JsonRpcRequest JsonRpcV1
                                                      "name_show"
                                                      [L.pack q]
-                                                     (String (T.pack id))
+                                                     (String (T.pack (show id)))
                    , checkStatus    = \_ _ _ -> Nothing
                    }
 
@@ -97,7 +97,8 @@ mainPdnsNmc = do
 
   mgr <- newManager def
   let
-    newcache count name = (insert count name) . (delete (count - 10))
+    newcache count name = (insert count name)
+      . (delete (if count >= 10 then count - 10 else count + 90))
     io = liftIO
     mainloop = forever $ do
       l <- io getLine
@@ -108,15 +109,22 @@ mainPdnsNmc = do
           case preq of
             PdnsRequestQ qname qtype id _ _ _ -> do
               io $ queryDom (queryOpNmc cfg mgr id) qname
-                     >>= putStr . (pdnsOut ver (show count) qname qtype)
+                     >>= putStr . (pdnsOut ver count qname qtype)
               io $ putStrLn $ "LOG\tRequest number " ++ (show count)
-                           ++ " id: " ++ id
+                           ++ " id: " ++ (show id)
                            ++ " qname: " ++ qname
                            ++ " qtype: " ++ (show qtype)
                            ++ " cache size: " ++ (show (size cache))
-              put (count + 1, newcache count qname cache)
-            PdnsRequestAXFR xfrreq ->
-              io $ putStr $ pdnsReport ("No support for AXFR " ++ xfrreq)
+              put (if count >= 99 then 0 else count + 1,
+                   newcache count qname cache)
+            PdnsRequestAXFR xrq ->
+              case lookup xrq cache of
+                Nothing ->
+                  io $ putStr $
+                    pdnsReport ("AXFR for unknown id: " ++ (show xrq))
+                Just qname ->
+                  io $ queryDom (queryOpNmc cfg mgr xrq) qname
+                    >>= putStr . (pdnsOutXfr ver count qname)
             PdnsRequestPing -> io $ putStrLn "END"
   runStateT mainloop (0, empty) >> return ()
 
@@ -125,16 +133,16 @@ mainPdnsNmc = do
 mainOne key = do
   cfg <- readConfig confFile
   mgr <- newManager def
-  dom <- queryDom (queryOpNmc cfg mgr "_") key
+  dom <- queryDom (queryOpNmc cfg mgr (-1)) key
   putStrLn $ ppShow dom
-  putStr $ pdnsOut 1 "_" key RRTypeANY dom
+  putStr $ pdnsOut 1 (-1) key RRTypeANY dom
 
 -- using file backend for testing json domain data
 
 mainFile key = do
   dom <- queryDom queryOpFile key
   putStrLn $ ppShow dom
-  putStr $ pdnsOut 1 "+" key RRTypeANY dom
+  putStr $ pdnsOut 1 (-1) key RRTypeANY dom
 
 -- Entry point
 

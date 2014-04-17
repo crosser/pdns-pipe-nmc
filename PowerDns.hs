@@ -3,6 +3,7 @@ module PowerDns ( RRType(..)
                 , pdnsParse
                 , pdnsReport
                 , pdnsOut
+                , pdnsOutXfr
                 ) where
 
 import NmcDom
@@ -16,17 +17,20 @@ data RRType = RRTypeSRV   | RRTypeA   | RRTypeAAAA | RRTypeCNAME
 data PdnsRequest = PdnsRequestQ
                    { qName              :: String
                    , qType              :: RRType
-                   , iD                 :: String
+                   , iD                 :: Int
                    , remoteIpAddress    :: String
                    , localIpAddress     :: Maybe String
                    , ednsSubnetAddress  :: Maybe String
                    }
-                 | PdnsRequestAXFR String
+                 | PdnsRequestAXFR Int
                  | PdnsRequestPing
         deriving (Show)
 
 pdnsParse ver s =
   let
+    getInt s = case reads s :: [(Int, String)] of
+      [(x, _)] -> x
+      _        -> -1
     getQt qt = case qt of
       "SRV"     -> RRTypeSRV   
       "A"       -> RRTypeA
@@ -54,11 +58,11 @@ pdnsParse ver s =
   in
     case words s of
       "PING":[]                 -> Right PdnsRequestPing
-      "AXFR":x:[]               -> Right (PdnsRequestAXFR x)
+      "AXFR":x:[]               -> Right (PdnsRequestAXFR (getInt x))
       "Q":qn:"IN":qt:id:rip:xs  -> Right (PdnsRequestQ
                                             { qName = qn
                                             , qType = getQt qt
-                                            , iD = id
+                                            , iD = getInt id
                                             , remoteIpAddress = rip
                                             , localIpAddress = getLIp ver xs
                                             , ednsSubnetAddress = getRIp ver xs
@@ -69,14 +73,14 @@ pdnsReport :: String -> String
 pdnsReport err =
   "LOG\tError: " ++ err ++ "\nFAIL\n"
 
-pdnsOut :: Int -> String -> String -> RRType -> Either String NmcDom -> String
+pdnsOut :: Int -> Int -> String -> RRType -> Either String NmcDom -> String
 pdnsOut ver id name rrtype edom = case edom of
   Left  err -> pdnsReport $ err ++ " in a query for " ++ name
   Right dom -> foldr addLine "END\n" $ n2p rrtype
     where
       addLine (nm, ty, dt) accum =
         "DATA\t" ++ v3ext ++ nm ++ "\tIN\t" ++ ty ++ "\t" ++ ttl ++
-            "\t" ++ id ++ "\t" ++ dt ++ "\n" ++ accum
+            "\t" ++ (show id) ++ "\t" ++ dt ++ "\n" ++ accum
       v3ext = case ver of
         3 -> "0\t1\t"
         _ -> ""
@@ -127,3 +131,8 @@ pdnsOut ver id name rrtype edom = case edom of
       takejust rrstr maybestr = case maybestr of
         Nothing  -> []
         Just str -> [(name, rrstr, str)]
+
+pdnsOutXfr :: Int -> Int -> String -> Either String NmcDom -> String
+pdnsOutXfr ver id name edom = case edom of
+  Left  err -> pdnsReport $ err ++ " in a query for " ++ name
+  Right dom -> pdnsReport $ "AXFR unsupported in a query for " ++ name
