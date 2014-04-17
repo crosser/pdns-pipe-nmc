@@ -9,11 +9,13 @@ import System.IO.Error
 import Control.Exception
 import Text.Show.Pretty hiding (String)
 import Control.Monad
-import Data.ByteString.Lazy hiding (reverse, putStr, putStrLn, head)
+import Control.Monad.State
+import Data.ByteString.Lazy hiding (reverse, putStr, putStrLn, head, empty)
 import qualified Data.ByteString.Char8 as C (pack)
 import qualified Data.ByteString.Lazy.Char8 as L (pack)
 import qualified Data.Text as T (pack)
 import Data.List.Split
+import Data.Map.Lazy (Map, empty, insert, delete, size)
 import Data.Aeson (encode, decode, Value(..))
 import Network.HTTP.Types
 import Data.Conduit
@@ -94,18 +96,29 @@ mainPdnsNmc = do
   putStrLn $ "OK\tDnsNmc ready to serve, protocol v." ++ (show ver)
 
   mgr <- newManager def
-  forever $ do
-    l <- getLine
-    case pdnsParse ver l of
-      Left e -> putStr $ pdnsReport e
-      Right preq -> do
-        case preq of
-          PdnsRequestQ qname qtype id _ _ _ ->
-            queryDom (queryOpNmc cfg mgr id) qname
-              >>= putStr . (pdnsOut ver id qname qtype)
-          PdnsRequestAXFR xfrreq ->
-            putStr $ pdnsReport ("No support for AXFR " ++ xfrreq)
-          PdnsRequestPing -> putStrLn "END"
+  let
+    newcache count name = (insert count name) . (delete (count - 10))
+    io = liftIO
+    mainloop = forever $ do
+      l <- io getLine
+      (count, cache) <- get
+      case pdnsParse ver l of
+        Left e -> io $ putStr $ pdnsReport e
+        Right preq -> do
+          case preq of
+            PdnsRequestQ qname qtype id _ _ _ -> do
+              io $ queryDom (queryOpNmc cfg mgr id) qname
+                     >>= putStr . (pdnsOut ver (show count) qname qtype)
+              io $ putStrLn $ "LOG\tRequest number " ++ (show count)
+                           ++ " id: " ++ id
+                           ++ " qname: " ++ qname
+                           ++ " qtype: " ++ (show qtype)
+                           ++ " cache size: " ++ (show (size cache))
+              put (count + 1, newcache count qname cache)
+            PdnsRequestAXFR xfrreq ->
+              io $ putStr $ pdnsReport ("No support for AXFR " ++ xfrreq)
+            PdnsRequestPing -> io $ putStrLn "END"
+  runStateT mainloop (0, empty) >> return ()
 
 -- query by key from Namecoin
 
