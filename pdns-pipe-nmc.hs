@@ -2,9 +2,14 @@
 
 module Main where
 
-import System.IO
+import Prelude hiding (readFile)
+import System.Environment
+import System.IO hiding (readFile)
+import System.IO.Error
+import Control.Exception
+import Text.Show.Pretty hiding (String)
 import Control.Monad
-import Data.ByteString.Lazy hiding (reverse, putStr, putStrLn)
+import Data.ByteString.Lazy hiding (reverse, putStr, putStrLn, head)
 import qualified Data.ByteString.Char8 as C (pack)
 import qualified Data.ByteString.Lazy.Char8 as L (pack)
 import qualified Data.Text as T (pack)
@@ -67,7 +72,7 @@ queryNmc mgr cfg qid fqdn =
 
 -- Main entry
 
-main = do
+mainNmc = do
 
   cfg <- readConfig confFile
 
@@ -102,9 +107,32 @@ main = do
             putStr $ pdnsReport ("No support for AXFR " ++ xfrreq)
           PdnsRequestPing -> putStrLn "END"
 
--- for testing
+-- query by key from Namecoin
 
-ask str = do
+mainOne key = do
   cfg <- readConfig confFile
   mgr <- newManager def
-  queryNmc mgr cfg "askid" str >>= putStr . (pdnsOut 1 "askid" str RRTypeANY)
+  dom <- queryNmc mgr cfg "+" key
+  putStrLn $ ppShow dom
+  putStr $ pdnsOut 1 "+" key RRTypeANY dom
+
+-- using file backend for testing json domain data
+
+queryFile :: String -> IO (Either String ByteString)
+queryFile key = catch (readFile key >>= return . Right)
+                      (\e -> return (Left (show (e :: IOException))))
+
+mainFile key = do
+  dom <- descendNmcDom queryFile [] (seedNmcDom key)
+  putStrLn $ ppShow dom
+  putStr $ pdnsOut 1 "+" key RRTypeANY dom
+
+-- Entry point
+
+main = do
+  args <- getArgs
+  case args of
+    []         -> mainNmc
+    [key]      -> mainOne key
+    ["-f",key] -> mainFile key
+    _ -> error $ "usage: empty args, or \"<key>\", or \"-f <key>\""
