@@ -58,21 +58,20 @@ qRsp rsp =
 
 -- NMC interface
 
-queryNmc :: Manager -> Config -> String -> String
-         -> IO (Either String NmcDom)
-queryNmc mgr cfg qid fqdn =
+queryOpNmc cfg mgr qid key =
+  runResourceT (httpLbs (qReq cfg key qid) mgr) >>= return . qRsp
+
+queryOpFile key = catch (readFile key >>= return . Right)
+                        (\e -> return (Left (show (e :: IOException))))
+
+queryDom queryOp fqdn =
   case reverse (splitOn "." fqdn) of
     "bit":dn:xs -> descendNmcDom queryOp xs $ seedNmcDom dn
     _           -> return $ Left "Only \".bit\" domain is supported"
-  where
-    queryOp key = do
-      rsp <- runResourceT $ httpLbs (qReq cfg key qid) mgr
-      -- print $ qRsp rsp
-      return $ qRsp rsp
 
--- Main entry
+-- Main entries
 
-mainNmc = do
+mainPdnsNmc = do
 
   cfg <- readConfig confFile
 
@@ -102,7 +101,7 @@ mainNmc = do
       Right preq -> do
         case preq of
           PdnsRequestQ qname qtype id _ _ _ ->
-            queryNmc mgr cfg id qname >>= putStr . (pdnsOut ver id qname qtype)
+            queryDom (queryOpNmc cfg mgr id) qname >>= putStr . (pdnsOut ver id qname qtype)
           PdnsRequestAXFR xfrreq ->
             putStr $ pdnsReport ("No support for AXFR " ++ xfrreq)
           PdnsRequestPing -> putStrLn "END"
@@ -112,18 +111,14 @@ mainNmc = do
 mainOne key = do
   cfg <- readConfig confFile
   mgr <- newManager def
-  dom <- queryNmc mgr cfg "+" key
+  dom <- queryDom (queryOpNmc cfg mgr "_") key
   putStrLn $ ppShow dom
-  putStr $ pdnsOut 1 "+" key RRTypeANY dom
+  putStr $ pdnsOut 1 "_" key RRTypeANY dom
 
 -- using file backend for testing json domain data
 
-queryFile :: String -> IO (Either String ByteString)
-queryFile key = catch (readFile key >>= return . Right)
-                      (\e -> return (Left (show (e :: IOException))))
-
 mainFile key = do
-  dom <- descendNmcDom queryFile [] (seedNmcDom key)
+  dom <- queryDom queryOpFile key
   putStrLn $ ppShow dom
   putStr $ pdnsOut 1 "+" key RRTypeANY dom
 
@@ -132,7 +127,7 @@ mainFile key = do
 main = do
   args <- getArgs
   case args of
-    []         -> mainNmc
+    []         -> mainPdnsNmc
     [key]      -> mainOne key
     ["-f",key] -> mainFile key
-    _ -> error $ "usage: empty args, or \"<key>\", or \"-f <key>\""
+    _ -> error $ "usage: empty args, or \"[-f] <fqdn>\""
