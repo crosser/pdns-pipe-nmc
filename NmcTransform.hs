@@ -39,17 +39,17 @@ mergeImport queryOp depth base = do
     base' = mbase {domImport = Nothing}
   -- print base
   if depth <= 0 then return $ Left "Nesting of imports is too deep"
-  else case domImport mbase of
-    Nothing  -> return $ Right base'
-    Just keys -> foldM mergeImport1 (Right base') keys
-      where
-        mergeImport1 (Left  err) _   = return $ Left err
-        mergeImport1 (Right acc) key = do
-          sub <- queryNmcDom queryOp key
-          case sub of
-            Left  err  -> return $ Left err
-            Right sub' -> mergeImport queryOp (depth - 1) $
-                                sub' `mergeNmcDom` acc
+  else case ((domDelegate mbase), (domImport mbase)) of
+    (Nothing,  Nothing  ) -> return $ Right base'
+    (Nothing,  Just keys) -> foldM mergeImport1 (Right base') keys
+    (Just key, _        ) -> mergeImport1 (Right emptyNmcDom) key
+  where
+    mergeImport1 (Left  err) _   = return $ Left err -- can never happen
+    mergeImport1 (Right acc) key = do
+      sub <- queryNmcDom queryOp key
+      case sub of
+        Left  err  -> return $ Left err
+        Right sub' -> mergeImport queryOp (depth - 1) $ sub' `mergeNmcDom` acc
 
 -- | If there is an element in the map with key "", merge the contents
 --   and remove this element. Do this recursively.
