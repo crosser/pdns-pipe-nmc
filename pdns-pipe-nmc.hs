@@ -110,11 +110,13 @@ mainPdnsNmc = do
             PdnsRequestQ qname qtype id _ _ _ -> do
               io $ queryDom (queryOpNmc cfg mgr id) qname
                      >>= putStr . (pdnsOut ver count qname qtype)
+  -- debug
               io $ putStrLn $ "LOG\tRequest number " ++ (show count)
                            ++ " id: " ++ (show id)
                            ++ " qname: " ++ qname
                            ++ " qtype: " ++ (show qtype)
                            ++ " cache size: " ++ (show (size cache))
+  -- end debug
               put (if count >= 99 then 0 else count + 1,
                    newcache count qname cache)
             PdnsRequestAXFR xrq ->
