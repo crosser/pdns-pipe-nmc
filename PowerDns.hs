@@ -118,8 +118,8 @@ justv accessor _ dom = case accessor dom of
 dotmail addr = 
   let (aname, adom) = break (== '@') addr
   in case adom of
-    "" -> aname
-    _  -> aname ++ "." ++ (tail adom)
+    "" -> aname ++ "."
+    _  -> aname ++ "." ++ (tail adom) ++ "."
 
 dataRR RRTypeSRV   = justl domSrv
 dataRR RRTypeMX    = justl domMx
@@ -127,40 +127,40 @@ dataRR RRTypeA     = justl domIp
 dataRR RRTypeAAAA  = justl domIp6
 dataRR RRTypeCNAME = justv domAlias
 dataRR RRTypeDNAME = justv domTranslate
-dataRR RRTypeSOA   = soa
-  where
-    soa name dom  =     -- FIXME generate only for top domain
-                        -- FIXME make realistic version field
-                        -- FIXME make realistic nameserver field
-  -- Follows a relatively ugly hack to figure if we are at the top
-  -- level domain ("something.bit"). Only in such case we provide
-  -- the synthetic SOA RR. Otherwise yield empty.
+dataRR RRTypeSOA   = \ name dom -> -- FIXME make realistic version field
+  let
+    ns = case domNs dom of
+      Just (x:_) -> x           -- FIXME Terminate with a dot?
+      _          -> "."
+    email = case domEmail dom of
+      Nothing   -> "hostmaster." ++ name ++ "."
+      Just addr -> dotmail addr
+  in
+    if dom == emptyNmcDom then []
+    else
+    -- Follows a relatively ugly hack to figure if we are at the top
+    -- level domain ("something.bit"). Only in such case we provide
+    -- the synthetic SOA RR. Otherwise yield empty.
+    -- Alternative would be to carry "top-ness" as a parameter through
+    -- all the calls from the very top where we split the fqdn.
       case splitOn (pack ".") (pack name) of
-        [_,_] ->
-          if dom == emptyNmcDom then []
-          else ["ns " ++ email ++ " 99999 10800 3600 604800 86400"]
-            where
-              email = case domEmail dom of
-                Nothing   -> "hostmaster." ++ name
-                Just addr -> dotmail addr
-        _ -> []
-dataRR RRTypeRP    = rp
-  where
-    rp _ dom = case domEmail dom of
-      Nothing   -> []
-      Just addr -> [(dotmail addr) ++ " ."]
+        [_,_] -> [ns ++ " " ++ email ++ " 99999 10800 3600 604800 86400"]
+        _     -> []
+dataRR RRTypeRP    = \ _ dom ->
+  case domEmail dom of
+    Nothing   -> []
+    Just addr -> [(dotmail addr) ++ " ."]
 dataRR RRTypeLOC   = justv domLoc
-dataRR RRTypeNS    = justl domNs
-dataRR RRTypeDS    = ds
-  where
-    ds _ dom = case domDs dom of
-      Nothing  -> []
-      Just dss -> map dsStr dss
-        where
-          dsStr x = (show (dsKeyTag x)) ++ " "
-                 ++ (show (dsAlgo x)) ++ " "
-                 ++ (show (dsHashType x)) ++ " "
-                 ++ (dsHashValue x)
+dataRR RRTypeNS    = justl domNs -- FIXME Terminate with a dot?
+dataRR RRTypeDS    = \ _ dom ->
+  case domDs dom of
+    Nothing  -> []
+    Just dss -> map dsStr dss
+      where
+        dsStr x = (show (dsKeyTag x)) ++ " "
+               ++ (show (dsAlgo x)) ++ " "
+               ++ (show (dsHashType x)) ++ " "
+               ++ (dsHashValue x)
 
 formatRR ver id name dom rrtype =
   foldr (\x a -> "DATA\t" ++ v3ext ++ name ++ "\tIN\t" ++ (show rrtype)
