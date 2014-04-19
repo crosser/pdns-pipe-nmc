@@ -3,11 +3,12 @@ module PowerDns ( RRType(..)
                 , PdnsRequest(..)
                 , pdnsParse
                 , pdnsReport
-                , pdnsOut
+                , pdnsOutQ
                 , pdnsOutXfr
                 ) where
 
 import Data.Text.Lazy (splitOn, pack)
+import Data.Map.Lazy (foldrWithKey)
 
 import NmcDom
 
@@ -64,7 +65,7 @@ pdnsParse ver s =
   let
     getInt s = case reads s :: [(Int, String)] of
       [(x, _)] -> x
-      _        -> -1
+      _        -> (-1)
     getLIp ver xs
       | ver >= 2  = case xs of
                       x:_       -> Just x
@@ -98,26 +99,44 @@ pdnsReport :: String -> String
 pdnsReport err = "LOG\tError: " ++ err ++ "\nFAIL\n"
 
 -- | Produce answer to the Q request
-pdnsOut :: Int -> Int -> String -> RRType -> Either String NmcDom -> String
-pdnsOut ver id name rrtype edom =
+pdnsOutQ :: Int -> Int -> String -> RRType -> Either String NmcDom -> String
+pdnsOutQ ver id name rrt edom =
   let
-    rrl = case rrtype of
-      RRTypeANY -> [RRTypeSRV, RRTypeA, RRTypeAAAA, RRTypeCNAME
+    rrl = case rrt of
+      RRTypeANY -> [ RRTypeSRV, RRTypeA, RRTypeAAAA, RRTypeCNAME
                    , RRTypeDNAME, RRTypeRP, RRTypeLOC, RRTypeNS
-                   , RRTypeDS, RRTypeMX]
-      rrt       -> [rrt]
+                   , RRTypeDS, RRTypeMX -- SOA not included
+                   ]
+      x         -> [x]
   in
-    (formatDom ver id name rrl edom) ++ "END\n"
+    case edom of
+      Left  err ->
+        pdnsReport $ err ++ " in the " ++ (show rrt) ++ " query for " ++ name
+      Right dom ->
+        formatDom ver id rrl name dom "END\n"
 
 -- | Produce answer to the AXFR request
 pdnsOutXfr :: Int -> Int -> String -> Either String NmcDom -> String
-pdnsOutXfr ver id name edom = "" -- FIXME
+pdnsOutXfr ver id name edom =
+  let
+    allrrs = [ RRTypeSRV, RRTypeA, RRTypeAAAA, RRTypeCNAME
+             , RRTypeDNAME, RRTypeRP, RRTypeLOC, RRTypeNS
+             , RRTypeDS, RRTypeMX, RRTypeSOA
+             ]
+    walkDom f acc name dom =
+      f name dom $ case domMap dom of
+        Nothing -> acc
+        Just dm ->
+          foldrWithKey (\n d a -> walkDom f a (n ++ "." ++ name) d) acc dm
+  in
+    case edom of
+      Left  err ->
+        pdnsReport $ err ++ " in the AXFR request for " ++ name
+      Right dom ->
+        walkDom (formatDom ver id allrrs) "END\n" name dom
 
-formatDom ver id name rrl edom = case edom of
-  Left  err ->
-    pdnsReport $ err ++ " in the " ++ (show rrl) ++ " query for " ++ name
-  Right dom ->
-    foldr (\x a -> (formatRR ver id name dom x) ++ a) "" rrl
+formatDom ver id rrl name dom acc =
+  foldr (\x a -> (formatRR ver id name dom x) ++ a) acc rrl
 
 formatRR ver id name dom rrtype =
   foldr (\x a -> "DATA\t" ++ v3ext ++ name ++ "\tIN\t" ++ (show rrtype)

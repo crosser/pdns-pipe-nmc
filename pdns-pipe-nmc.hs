@@ -54,8 +54,8 @@ qRsp rsp =
     case parseJsonRpc (responseBody rsp) :: Either JsonRpcError NmcRes of
       Left  jerr -> 
         case (jrpcErrCode jerr) of
-          -4 -> Right "{}"      -- this is how non-existent entry is returned
-          _  -> Left $ "JsonRpc error response: " ++ (show jerr)
+          (-4) -> Right "{}"    -- this is how non-existent entry is returned
+          _    -> Left $ "JsonRpc error response: " ++ (show jerr)
       Right jrsp -> Right $ resValue jrsp
 
 -- NMC interface
@@ -118,7 +118,7 @@ mainPdnsNmc = do
           case preq of
             PdnsRequestQ qname qtype id _ _ _ -> do
               io $ queryDom (queryOpNmc cfg mgr id) qname
-                     >>= putStr . (pdnsOut ver count qname qtype)
+                     >>= putStr . (pdnsOutQ ver count qname qtype)
   -- debug
               io $ putStrLn $ "LOG\tRequest number " ++ (show count)
                            ++ " id: " ++ (show id)
@@ -139,6 +139,13 @@ mainPdnsNmc = do
 
   runStateT mainloop (0, empty) >> return ()
 
+-- helper for command-line tools
+
+pdnsOut key qt dom =
+  case qt of
+    "AXFR" -> pdnsOutXfr 1 (-1) key dom
+    _      -> pdnsOutQ 1 (-1) key (rrType qt) dom
+
 -- query by key from Namecoin
 
 mainOne key qt = do
@@ -146,14 +153,14 @@ mainOne key qt = do
   mgr <- newManager def
   dom <- queryDom (queryOpNmc cfg mgr (-1)) key
   putStrLn $ ppShow dom
-  putStr $ pdnsOut 1 (-1) key qt dom
+  putStr $ pdnsOut key qt dom
 
 -- using file backend for testing json domain data
 
 mainFile key qt = do
   dom <- queryDom queryOpFile key
   putStrLn $ ppShow dom
-  putStr $ pdnsOut 1 (-1) key qt dom
+  putStr $ pdnsOut key qt dom
 
 -- Entry point
 
@@ -161,6 +168,6 @@ main = do
   args <- getArgs
   case args of
     []                 -> mainPdnsNmc
-    [key, qtype]       -> mainOne key (rrType qtype)
-    ["-f" ,key, qtype] -> mainFile key (rrType qtype)
-    _ -> error $ "usage: empty args, or \"[-f] <fqdn> <QTYPE>\" (type in caps)"
+    [key, qtype]       -> mainOne key qtype
+    ["-f" ,key, qtype] -> mainFile key qtype
+    _ -> error $ "usage: empty args, or \"[-f] <fqdn> {<TYPE>|ANY|AXFR}\" (type in caps)"
