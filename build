@@ -1,0 +1,13 @@
+#!/bin/sh
+
+file="pdns-pipe-nmc"
+sfx="`uname -m`,`date +%Y-%m-%d`.git-`git rev-parse --verify HEAD | cut -c 1-7`"
+echo "Making $file.$sfx"
+
+ghc --make "$file"
+case $? in
+0) ;;
+*) echo build falied; exit 1 ;;
+esac
+mv "$file" "$file.$sfx" || exit 1
+gpg --detach-sign "$file.$sfx"
