@@ -79,6 +79,7 @@ mainPdnsNmc = do
 
   hSetBuffering stdin  LineBuffering
   hSetBuffering stdout LineBuffering
+
   ver <- do
     let
       loopErr e = forever $ do
@@ -96,10 +97,18 @@ mainPdnsNmc = do
   putStrLn $ "OK\tDnsNmc ready to serve, protocol v." ++ (show ver)
 
   mgr <- newManager def
+
   let
-    newcache count name = (insert count name)
-      . (delete (if count >= 10 then count - 10 else count + 90))
+    fetch = lookup
+    -- Save the name under current count, increment count for the next run
+    -- so the name is saved under the count that was put into the response.
+    stow name (count, cache) =
+      (if count >= 99 then 0 else count + 1
+      , insert count name
+          $ delete (if count >= 10 then count - 10 else count + 90) cache
+      )
     io = liftIO
+
     mainloop = forever $ do
       l <- io getLine
       (count, cache) <- get
@@ -117,10 +126,9 @@ mainPdnsNmc = do
                            ++ " qtype: " ++ (show qtype)
                            ++ " cache size: " ++ (show (size cache))
   -- end debug
-              put (if count >= 99 then 0 else count + 1,
-                   newcache count qname cache)
+              put $ stow qname (count, cache)
             PdnsRequestAXFR xrq ->
-              case lookup xrq cache of
+              case fetch xrq cache of
                 Nothing ->
                   io $ putStr $
                     pdnsReport ("AXFR for unknown id: " ++ (show xrq))
@@ -128,6 +136,7 @@ mainPdnsNmc = do
                   io $ queryDom (queryOpNmc cfg mgr xrq) qname
                     >>= putStr . (pdnsOutXfr ver count qname)
             PdnsRequestPing -> io $ putStrLn "END"
+
   runStateT mainloop (0, empty) >> return ()
 
 -- query by key from Namecoin
