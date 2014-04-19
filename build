@@ -1,7 +1,7 @@
 #!/bin/sh
 
 file="pdns-pipe-nmc"
-sfx="`uname -m`,`date +%Y-%m-%d`.git-`git rev-parse --verify HEAD | cut -c 1-7`"
+sfx="`uname -m`.`date +%Y-%m-%d`.git-`git rev-parse --verify HEAD | cut -c 1-7`"
 echo "Making $file.$sfx"
 
 ghc --make "$file"
