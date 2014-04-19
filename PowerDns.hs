@@ -99,23 +99,29 @@ pdnsReport err = "LOG\tError: " ++ err ++ "\nFAIL\n"
 
 -- | Produce answer to the Q request
 pdnsOut :: Int -> Int -> String -> RRType -> Either String NmcDom -> String
-pdnsOut ver id name rrtype edom = case edom of
-  Left  err ->
-    pdnsReport $ err ++ " in a " ++ (show rrtype) ++ "query for " ++ name
-  Right dom ->
-    case rrtype of
-      RRTypeANY -> foldr (\x a -> (formatRR ver id name dom x) ++ a) "END\n"
-          [RRTypeSRV, RRTypeA, RRTypeAAAA, RRTypeCNAME, RRTypeDNAME,
-           RRTypeRP, RRTypeLOC, RRTypeNS, RRTypeDS, RRTypeMX]
-      _         -> (formatRR ver id name dom rrtype) ++ "END\n"
+pdnsOut ver id name rrtype edom =
+  let
+    rrl = case rrtype of
+      RRTypeANY -> [RRTypeSRV, RRTypeA, RRTypeAAAA, RRTypeCNAME
+                   , RRTypeDNAME, RRTypeRP, RRTypeLOC, RRTypeNS
+                   , RRTypeDS, RRTypeMX]
+      rrt       -> [rrt]
+  in
+    (formatDom ver id name rrl edom) ++ "END\n"
 
 -- | Produce answer to the AXFR request
 pdnsOutXfr :: Int -> Int -> String -> Either String NmcDom -> String
 pdnsOutXfr ver id name edom = "" -- FIXME
 
+formatDom ver id name rrl edom = case edom of
+  Left  err ->
+    pdnsReport $ err ++ " in the " ++ (show rrl) ++ " query for " ++ name
+  Right dom ->
+    foldr (\x a -> (formatRR ver id name dom x) ++ a) "" rrl
+
 formatRR ver id name dom rrtype =
   foldr (\x a -> "DATA\t" ++ v3ext ++ name ++ "\tIN\t" ++ (show rrtype)
-            ++ "\t" ++ ttl ++ "\t" ++ (show id) ++ "\t" ++ x ++ "\n" ++ a)
+              ++ "\t" ++ ttl ++ "\t" ++ (show id) ++ "\t" ++ x ++ "\n" ++ a)
         "" $ dataRR rrtype name dom
     where
       v3ext = case ver of
