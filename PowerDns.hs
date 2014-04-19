@@ -185,7 +185,7 @@ dataRR RRTypeSOA   = \ name dom -> -- FIXME make realistic version field
     -- Alternative would be to carry "top-ness" as a parameter through
     -- all the calls from the very top where we split the fqdn.
       case splitOn (pack ".") (pack name) of
-        [_,_] -> [ns ++ " " ++ email ++ " 99999 10800 3600 604800 86400"]
+        [_,_] -> [ns ++ " " ++ email ++ " 0 10800 3600 604800 86400"]
         _     -> []
 dataRR RRTypeRP    = \ _ dom ->
   case domEmail dom of
