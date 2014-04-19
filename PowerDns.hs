@@ -81,7 +81,7 @@ pdnsParse ver s =
       "AXFR":x:[]               -> Right (PdnsRequestAXFR (getInt x))
       "Q":qn:"IN":qt:id:rip:xs  -> case rrType qt of
                                      RRTypeError e ->
-                                       Left $ "PDNS Request: " ++ (show qt)
+                                       Left $ "Unrecognized RR type: " ++ e
                                      rt ->
                                        Right (PdnsRequestQ
                                             { qName = qn
