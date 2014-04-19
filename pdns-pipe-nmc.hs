@@ -141,26 +141,26 @@ mainPdnsNmc = do
 
 -- query by key from Namecoin
 
-mainOne key = do
+mainOne key qt = do
   cfg <- readConfig confFile
   mgr <- newManager def
   dom <- queryDom (queryOpNmc cfg mgr (-1)) key
   putStrLn $ ppShow dom
-  putStr $ pdnsOut 1 (-1) key RRTypeANY dom
+  putStr $ pdnsOut 1 (-1) key qt dom
 
 -- using file backend for testing json domain data
 
-mainFile key = do
+mainFile key qt = do
   dom <- queryDom queryOpFile key
   putStrLn $ ppShow dom
-  putStr $ pdnsOut 1 (-1) key RRTypeANY dom
+  putStr $ pdnsOut 1 (-1) key qt dom
 
 -- Entry point
 
 main = do
   args <- getArgs
   case args of
-    []         -> mainPdnsNmc
-    [key]      -> mainOne key
-    ["-f",key] -> mainFile key
-    _ -> error $ "usage: empty args, or \"[-f] <fqdn>\""
+    []                 -> mainPdnsNmc
+    [key, qtype]       -> mainOne key (rrType qtype)
+    ["-f" ,key, qtype] -> mainFile key (rrType qtype)
+    _ -> error $ "usage: empty args, or \"[-f] <fqdn> <QTYPE>\" (type in caps)"

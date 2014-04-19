@@ -1,4 +1,5 @@
 module PowerDns ( RRType(..)
+                , rrType
                 , PdnsRequest(..)
                 , pdnsParse
                 , pdnsReport
@@ -13,22 +14,37 @@ import NmcDom
 data RRType = RRTypeSRV   | RRTypeA   | RRTypeAAAA | RRTypeCNAME
             | RRTypeDNAME | RRTypeSOA | RRTypeRP   | RRTypeLOC
             | RRTypeNS    | RRTypeDS  | RRTypeMX
-            | RRTypeANY   | RRTypeError String 
+            | RRTypeANY   | RRTypeError String
 
 instance Show RRType where
   show RRTypeSRV       = "SRV"
   show RRTypeA         = "A"
   show RRTypeAAAA      = "AAAA"
   show RRTypeCNAME     = "CNAME"
-  show RRTypeDNAME     = "DNAME" 
+  show RRTypeDNAME     = "DNAME"
   show RRTypeSOA       = "SOA"
   show RRTypeRP        = "RP"
   show RRTypeLOC       = "LOC"
-  show RRTypeNS        = "NS"   
+  show RRTypeNS        = "NS"
   show RRTypeDS        = "DS"
   show RRTypeMX        = "MX"
   show RRTypeANY       = "ANY"
-  show (RRTypeError s) = "RR type error: " ++ (show s)
+  show (RRTypeError s) = "Unknown RR type: " ++ (show s)
+
+rrType qt = case qt of
+  "SRV"     -> RRTypeSRV
+  "A"       -> RRTypeA
+  "AAAA"    -> RRTypeAAAA
+  "CNAME"   -> RRTypeCNAME
+  "DNAME"   -> RRTypeDNAME
+  "SOA"     -> RRTypeSOA
+  "RP"      -> RRTypeRP
+  "LOC"     -> RRTypeLOC
+  "NS"      -> RRTypeNS
+  "DS"      -> RRTypeDS
+  "MX"      -> RRTypeMX
+  "ANY"     -> RRTypeANY
+  _         -> RRTypeError qt
 
 data PdnsRequest = PdnsRequestQ
                    { qName              :: String
@@ -49,20 +65,6 @@ pdnsParse ver s =
     getInt s = case reads s :: [(Int, String)] of
       [(x, _)] -> x
       _        -> -1
-    getQt qt = case qt of
-      "SRV"     -> RRTypeSRV
-      "A"       -> RRTypeA
-      "AAAA"    -> RRTypeAAAA
-      "CNAME"   -> RRTypeCNAME
-      "DNAME"   -> RRTypeDNAME 
-      "SOA"     -> RRTypeSOA
-      "RP"      -> RRTypeRP
-      "LOC"     -> RRTypeLOC
-      "NS"      -> RRTypeNS   
-      "DS"      -> RRTypeDS
-      "MX"      -> RRTypeMX
-      "ANY"     -> RRTypeANY
-      _         -> RRTypeError qt
     getLIp ver xs
       | ver >= 2  = case xs of
                       x:_       -> Just x
@@ -77,9 +79,13 @@ pdnsParse ver s =
     case words s of
       "PING":[]                 -> Right PdnsRequestPing
       "AXFR":x:[]               -> Right (PdnsRequestAXFR (getInt x))
-      "Q":qn:"IN":qt:id:rip:xs  -> Right (PdnsRequestQ
+      "Q":qn:"IN":qt:id:rip:xs  -> case rrType qt of
+                                     RRTypeError e ->
+                                       Left $ "PDNS Request: " ++ e
+                                     rt ->
+                                       Right (PdnsRequestQ
                                             { qName = qn
-                                            , qType = getQt qt
+                                            , qType = rrType qt
                                             , iD = getInt id
                                             , remoteIpAddress = rip
                                             , localIpAddress = getLIp ver xs
@@ -107,6 +113,16 @@ pdnsOut ver id name rrtype edom = case edom of
 pdnsOutXfr :: Int -> Int -> String -> Either String NmcDom -> String
 pdnsOutXfr ver id name edom = "" -- FIXME
 
+formatRR ver id name dom rrtype =
+  foldr (\x a -> "DATA\t" ++ v3ext ++ name ++ "\tIN\t" ++ (show rrtype)
+            ++ "\t" ++ ttl ++ "\t" ++ (show id) ++ "\t" ++ x ++ "\n" ++ a)
+        "" $ dataRR rrtype name dom
+    where
+      v3ext = case ver of
+        3 -> "0\t1\t"
+        _ -> ""
+      ttl = show 3600
+
 justl accessor _ dom = case accessor dom of
   Nothing -> []
   Just xs -> xs
@@ -115,7 +131,7 @@ justv accessor _ dom = case accessor dom of
   Nothing -> []
   Just x  -> [x]
 
-dotmail addr = 
+dotmail addr =
   let (aname, adom) = break (== '@') addr
   in case adom of
     "" -> aname ++ "."
@@ -161,13 +177,6 @@ dataRR RRTypeDS    = \ _ dom ->
                ++ (show (dsAlgo x)) ++ " "
                ++ (show (dsHashType x)) ++ " "
                ++ (dsHashValue x)
-
-formatRR ver id name dom rrtype =
-  foldr (\x a -> "DATA\t" ++ v3ext ++ name ++ "\tIN\t" ++ (show rrtype)
-            ++ "\t" ++ ttl ++ "\t" ++ (show id) ++ "\t" ++ x ++ "\n" ++ a)
-        "" $ dataRR rrtype name dom
-    where
-      v3ext = case ver of
-        3 -> "0\t1\t"
-        _ -> ""
-      ttl = show 3600
+-- This only comes into play when data arrived _not_ from a PDNS request:
+dataRR (RRTypeError e) = \ _ _ ->
+  ["; No data for bad request type " ++ e]
