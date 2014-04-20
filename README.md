@@ -91,13 +91,23 @@ and did not notice anomalies so far.
 
 Try at your risk.
 
-## Getting the Source
+## Getting the Software
+
+### Source
 
 Check the [project homepage](http://www.average.org/pdns-pipe-nmc/).
 
 Git [clone](git://git.average.org/git/pdns-pipe-nmc.git) or
 [browse](http://www.average.org/gitweb/?p=pdns-pipe-nmc.git;a=summary),
 or use [github mirror](https://github.com/crosser/pdns-pipe-nmc).
+
+### Binary Executable
+
+There is a binary built for x86_64 Linux with glibc6:
+
+|----------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------|
+| Executable file                                                                                                      | PGP                                                                 |
+| [pdns-pipe-nmc.linux-glibc6.x86_64.2014-04-20.git-e9bd43f](pdns-pipe-nmc.linux-glibc6.x86_64.2014-04-20.git-e9bd43f) | [sig](pdns-pipe-nmc.linux-glibc6.x86_64.2014-04-20.git-e9bd43f.sig) |
 
 ## Author
 
