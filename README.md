@@ -82,10 +82,9 @@ your resolvers.
 
 ## Status
 
-Alpha. It is largely untested, and there are loose ends in the
-functionality. For example, `delegate` does not work yet, version in the
-`SOA` record is bogus. Some of the the problems are due to incomplete
-and/or imprecise
+Alpha. It is insufficiently tested, and there are loose ends in the
+functionality. For example, version in the `SOA` record is bogus.
+Some of the the problems are due to incomplete and/or imprecise
 [definition of the domain data format](https://wiki.namecoin.info/index.php?title=Domain_Name_Specification)
 on the wiki. That said, I am using it to access some of the `.bit` websites
 and did not notice anomalies so far.
@@ -99,6 +98,9 @@ Check the [project homepage](http://www.average.org/pdns-pipe-nmc/).
 Git [clone](git://git.average.org/git/pdns-pipe-nmc.git) or
 [browse](http://www.average.org/gitweb/?p=pdns-pipe-nmc.git;a=summary),
 or use [github mirror](https://github.com/crosser/pdns-pipe-nmc).
+
+Here is a statically linked Linux binary:
+[pdns-pipe-nmc.x86\_64.2014-04-20.git-e9bd43f](http://www/average/org/pdns-pipe-nmc/pdns-pipe-nmc.x86_64.2014-04-20.git-e9bd43f) with pgp [signature](http://www/average/org/pdns-pipe-nmc/pdns-pipe-nmc.x86_64.2014-04-20.git-e9bd43f.sig).
 
 ## Author
 
