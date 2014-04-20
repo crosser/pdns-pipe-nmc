@@ -32,7 +32,9 @@ or a JSON `Map`, with the following attributes, all optional:
 
 * Any attribute specified as `Array(String)` may be present in the
   JSON document as a plain `String`, which is interpreted the same way
-  as an `Array` containing a single `String` element.
+  as an `Array` containing a single `String` element. In other words,
+  `"ip":"1.2.3.4"` is equivalent to `"ip":["1.2.3.4"]`. (This does not
+  apply to non-string-array attributes, like "service" or "ds".)
 * If `DomObj` is a `String`, it is interpreted as an IPv4 address.
   In other words, string `"1.2.3.4"` is the same as the Map
   `"{\"ip\":\"1.2.3.4\"}"`. Such "shorthand" DomObj can be present at
@@ -56,7 +58,8 @@ or a JSON `Map`, with the following attributes, all optional:
 * `Service` and `Protocol` are two elements of the domain name, without
   the undescore '_'.
 * `SrvObj` with Service `"smtp"`, Protocol `"tcp"` and Port `25` is also
-  interpteted as an `MX` DNS resource.
+  interpteted as an `MX` DNS resource at the domain level containing the
+  `"service"` object.
 * When lookup is performed for `SRV` records at fqdn
   `"_serv._proto.sub.dom.bit"`, domain object for `"sub.dom.bit"` must be
   fetched, and in this object, `SrvObj`s for the Service `"serv"` and
@@ -72,6 +75,11 @@ or a JSON `Map`, with the following attributes, all optional:
 | 1 | String | Match value - certificate or hash of it as hex string |
 | 2 | Int    | Include subdomains - 0:No, 1:Yes                      |
 
+#### Notes
+
+* The fields of the object correspond to the attributes defined by
+  [RFC-6698](http://tools.ietf.org/html/rfc6698) ("DANE").
+
 ### `DsObj` Object
 
 `DsObj` is a heterogenous Array of fixed size containing 4 elements:
@@ -82,6 +90,11 @@ or a JSON `Map`, with the following attributes, all optional:
 | 1 | Int    | Key Algorithm            |
 | 2 | Int    | Hash Type                |
 | 3 | String | Hash Value as hex string |
+
+#### Notes
+
+* The fields of the object correspond to the attributes defined by
+  [RFC-3658](http://tools.ietf.org/html/rfc3658).
 
 ## Data Interpretation
 
@@ -132,51 +145,111 @@ translates into a series of `A` RRs:
 
 #### ip6 attribute
 
+Contains a list of strings representing IPv6 addresses in semicolon
+quads notation. For example,
+
+```
+"ip6": ["2001:4860:0:1001::68"]
+```
+
+translates into one AAAA RR:
+
+```
+        IN AAAA 2001:4860:0:1001::68
+```
 
 #### tor attribute
 
+Does not translate into any DNS RR. Contains Tor hidden service address.
 
 #### i2p attribute
 
+Does not translate into any DNS RR. Contains an object with three
+optional String attributes: `"destination"`, `"name"` and `"b32"`.
 
 #### freenet attribute
 
+Does not translate into any DNS RR. Contains Freesite key.
 
 #### alias attribute
 
+Translates into `CNAME` RR. Invalidates all other attributes except
+the element of the `"map"` with empty key. Such element is analysed
+and its contents merged into the base domain before the check.
 
 #### translate attribute
 
+Translates into `DNAME` RR. Invalidates the contents of the `"map"`
+attribute, except the element of the `"map"` with empty key. Such
+element is analysed and its contents merged into the base domain
+before the check.
 
 #### email attribute
 
+Translates into the `email` element of the SOA and RP RRs. The
+value `"email":"user@domain.tld"` becomes `user.domain.tld.`
+in the DNS record.
 
 #### loc attribute
 
+Translates into `LOC` RR. Value must conform to the format defined
+by [RFC-1876](http://tools.ietf.org/html/rfc1876).
 
 #### info attribute
 
+Does not translate into any DNS RR. Contains a JSON object with
+format unspecified at the time of this writing.
 
 #### ns attribute
 
+Translates into `NS` RR. Invalidates all other attributes, except
+the element of the `"map"` with empty key. Such element is analysed
+and its contents merged into the base domain before the check.
 
 #### delegate attribute
 
+Does not translate into any DNS RR. Instead, the value is used as
+a key for namecoin lookup (i.e. the value must be specified with
+the namespace prefix), and the result of the lookup replaces all
+other attributes, except the element of the `"map"` with empty key.
+Such element is analysed and its contents merged into the base
+domain before the check.
 
 #### import attribute
 
+Does not translate into any DNS RR. Instead, the value is used as
+a key for namecoin lookup (i.e. the value must be specified with
+the namespace prefix), and the result of the lookup is merged with
+the current domain object.
 
 #### map attribute
 
+JSON Map object containing subdomain names as its keys and domain
+objects as values. Element of the map with empty key "" has special
+meaning: the value of this map element is merged into the current
+domain object. This operaton happens first when a new domain object
+is analyzed, and is performed recursively. In the result of the
+merge, the `"map"` does not contain the element with empty key.
+Further operatons that can potentially modify the contents of the
+current domain object (`import` and `delegate` lookups) start when
+the empty element of the `"map"` has been recursively merged into
+the current object.
 
 #### fingerprint attribute
 
+Does not translate into any DNS RR. Contains a list of TLS
+certificate fingerprints. Deprecated.
 
 #### tls attribute
 
+Intended to carry attributes as per
+[RFC-6698](http://tools.ietf.org/html/rfc6698) ("DANE").
+As of this writing, the specification is under discussion.
 
 #### ds attribute
 
+Translates into `DS` RR. Carries attributes defined by
+[RFC-4034](http://tools.ietf.org/html/rfc4034).
 
 ### Lookup Sequence
 
@@ -193,29 +266,35 @@ recursive sequece:
 1. Value of the element of the `"map"` attribute with the key `""`
    (empty string) is recursively merged into the base domain. The
    `""` element of the `"map"` is removed from the result.
-2. If attribute `"import"` does not exist in the resulting object,
-   recursion stops, and step 3 is performed on the result
+2. If attribute `"delegate"` does not exist in the resulting object,
+   step 3 is is performed. If attribute `"delegate"` exists, in
+   the resulting object, lookup is performed for the values of this
+   attribute, and fetched object replaces the base domain completely.
+   The result is passed as base domain to step 1.
+3. If attribute `"import"` does not exist in the resulting object,
+   recursion stops, and step 4 is performed on the result
    If attribute `"import"` exists in the resulting object, lookup is
-   is performed for the values of this attribute, and fetched objects
-   are recursively merged into the base domain. The `"import"` attribute
-   is removed from the result. Then the result is passed as base
-   domain to step 1.
-3. If subdomain chain is empty, recursion stops, and step 4 is
+   performed for the values of this attribute, and fetched objects
+   are recursively merged into the base domain. The `"import"`
+   attribute is removed from the result. Then the result is passed
+   as base domain to step 1.
+4. If subdomain chain is empty, recursion stops, and step 5 is
    performed on the result. If subdomain chain is not empty, next
    element is taken out of the chain, and the `"map"` is looked
    up for the element with the name matching the subdomain element.
    The value of this element of the `"map"` is passed as base domain
    to step 1. If matching element does not exist, lookup is considered
    failed.
-4. Domain object with all `""` map elements and all `"import"` data
-   merged is "normalized" by removal of attributes that are nullified
-   by the presence of other attributes.
+5. Domain object in which all `""` map elements and all `"delegate"`
+   and `"import"` elements are acted upon and removed, is then
+   "normalized" by removal of attributes that are nullified by the
+   presence of other attributes.
 
 Note that the process involves recursion nested to three levels.
 
 ### Merging Procedure
 
-When a domain object `sub` needs merging into a domain object `base`,
+When a domain object `extra` needs merging into a domain object `base`,
 the following rules are applied:
 
 * Of `String` and other "scalar" attributes, one is chosen, the value
@@ -223,8 +302,8 @@ the following rules are applied:
 * On `Array` attribtes, `union` operation is performed. (Of equal
   elements, only one copy is left.)
 * On `Map` attributes, recursive merge is performed. On the top level,
-  elemens with keys that are only present in either `base` or `sub`
+  elemens with keys that are only present in either `base` or `extra`
   object are all put into result. The values of the elements that are
-  present in both `base` and `sub` are merged according to the rules
-  applicable to their type.
+  present in both `base` and `extra` objects are merged according to
+  the rules applicable to their type.
 
