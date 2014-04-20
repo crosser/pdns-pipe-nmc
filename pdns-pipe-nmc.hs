@@ -18,8 +18,8 @@ import Data.List.Split
 import Data.Map.Lazy (Map, empty, lookup, insert, delete, size)
 import Data.Aeson (encode, decode, Value(..))
 import Network.HTTP.Types
-import Data.Conduit
-import Network.HTTP.Conduit
+import Network.HTTP.Client
+import Data.Default (def)
 
 import JsonRpcClient
 import Config
@@ -32,7 +32,7 @@ confFile = "/etc/namecoin.conf"
 
 -- HTTP/JsonRpc interface
 
-qReq :: Config -> String -> Int -> Request m
+qReq :: Config -> String -> Int -> Request
 qReq cf q id = applyBasicAuth (C.pack (rpcuser cf)) (C.pack (rpcpassword cf))
              $ def { host           = (C.pack (rpchost cf))
                    , port           = (rpcport cf)
@@ -61,7 +61,7 @@ qRsp rsp =
 -- NMC interface
 
 queryOpNmc cfg mgr qid key =
-  runResourceT (httpLbs (qReq cfg key qid) mgr) >>= return . qRsp
+  httpLbs (qReq cfg key qid) mgr >>= return . qRsp
 
 queryOpFile key = catch (readFile key >>= return . Right)
                         (\e -> return (Left (show (e :: IOException))))
@@ -96,7 +96,7 @@ mainPdnsNmc = do
 
   putStrLn $ "OK\tDnsNmc ready to serve, protocol v." ++ (show ver)
 
-  mgr <- newManager def
+  mgr <- newManager defaultManagerSettings
 
   let
     fetch = lookup
@@ -150,7 +150,7 @@ pdnsOut key qt dom =
 
 mainOne key qt = do
   cfg <- readConfig confFile
-  mgr <- newManager def
+  mgr <- newManager defaultManagerSettings
   dom <- queryDom (queryOpNmc cfg mgr (-1)) key
   putStrLn $ ppShow dom
   putStr $ pdnsOut key qt dom
