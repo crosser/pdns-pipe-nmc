@@ -105,10 +105,9 @@ or use [github mirror](https://github.com/crosser/pdns-pipe-nmc).
 
 There is a binary built for x86_64 Linux with glibc6:
 
-|----------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------|
 | Executable file                                                                                                      | PGP                                                                 |
-| [pdns-pipe-nmc.linux-glibc6.x86_64.2014-04-20.git-e9bd43f](pdns-pipe-nmc.linux-glibc6.x86_64.2014-04-20.git-e9bd43f) | [sig](pdns-pipe-nmc.linux-glibc6.x86_64.2014-04-20.git-e9bd43f.sig) |
 |----------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------|
+| [pdns-pipe-nmc.linux-glibc6.x86_64.2014-04-20.git-e9bd43f](pdns-pipe-nmc.linux-glibc6.x86_64.2014-04-20.git-e9bd43f) | [sig](pdns-pipe-nmc.linux-glibc6.x86_64.2014-04-20.git-e9bd43f.sig) |
 
 ## Author
 
