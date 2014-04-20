@@ -99,9 +99,6 @@ Git [clone](git://git.average.org/git/pdns-pipe-nmc.git) or
 [browse](http://www.average.org/gitweb/?p=pdns-pipe-nmc.git;a=summary),
 or use [github mirror](https://github.com/crosser/pdns-pipe-nmc).
 
-Here is a statically linked Linux binary:
-[pdns-pipe-nmc.x86\_64.2014-04-20.git-e9bd43f](http://www/average/org/pdns-pipe-nmc/pdns-pipe-nmc.x86_64.2014-04-20.git-e9bd43f) with pgp [signature](http://www/average/org/pdns-pipe-nmc/pdns-pipe-nmc.x86_64.2014-04-20.git-e9bd43f.sig).
-
 ## Author
 
 Eugene Crosser \<crosser at average dot org\>    
