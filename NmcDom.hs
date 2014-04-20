@@ -81,16 +81,16 @@ instance Mergeable NmcRRService where
         merge _ b = b
 
 data NmcRRI2p = NmcRRI2p
-                        { i2pDestination :: String
-                        , i2pName        :: String
-                        , i2pB32         :: String
+                        { i2pDestination :: Maybe String
+                        , i2pName        :: Maybe String
+                        , i2pB32         :: Maybe String
                         } deriving (Show, Eq)
 
 instance FromJSON NmcRRI2p where
         parseJSON (Object o) = NmcRRI2p
-                <$> o .: "destination"
-                <*> o .: "name"
-                <*> o .: "b32"
+                <$> o .:? "destination"
+                <*> o .:? "name"
+                <*> o .:? "b32"
         parseJSON _ = empty
 
 instance Mergeable NmcRRI2p where

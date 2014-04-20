@@ -5,7 +5,8 @@ sfx="linux-glibc6.`uname -m`.`date +%Y-%m-%d`.git-`git rev-parse --verify HEAD |
 echo "Making $file.$sfx"
 
 # tried this:
-#ghc --make -static -optc-static -optl-shared-libgcc -optl-static -optl-pthread
+#ghc --make -static -optc-static -optl-shared-libgcc -optl-static \
+#           -optl-pthread -pgml g++ "$file"
 # but cannot make it "only glibc is shared". And with static glibc,
 # getaddrinfo does not work on systems with different glibc.
 ghc --make "$file"
