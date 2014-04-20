@@ -1,9 +1,13 @@
 #!/bin/sh
 
 file="pdns-pipe-nmc"
-sfx="`uname -m`.`date +%Y-%m-%d`.git-`git rev-parse --verify HEAD | cut -c 1-7`"
+sfx="linux-glibc6.`uname -m`.`date +%Y-%m-%d`.git-`git rev-parse --verify HEAD | cut -c 1-7`"
 echo "Making $file.$sfx"
 
+# tried this:
+#ghc --make -static -optc-static -optl-shared-libgcc -optl-static -optl-pthread
+# but cannot make it "only glibc is shared". And with static glibc,
+# getaddrinfo does not work on systems with different glibc.
 ghc --make "$file"
 case $? in
 0) ;;
