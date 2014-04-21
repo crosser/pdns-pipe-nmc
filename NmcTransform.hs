@@ -91,7 +91,7 @@ expandSrv base =
               sub3 = emptyNmcDom { domSrv = Just [srvStr] }
               proto = "_" ++ (srvProto sr)
               srvid = "_" ++ (srvName sr)
-              srvStr =  (show (srvPrio sr)) ++ " "
+              srvStr =  (show (srvPrio sr)) ++ "\t"
                      ++ (show (srvWeight sr)) ++ " "
                      ++ (show (srvPort sr)) ++ " "
                      ++ (srvHost sr)
@@ -99,7 +99,7 @@ expandSrv base =
                 if srvName sr == "smtp"
                    && srvProto sr == "tcp"
                    && srvPort sr == 25
-                then Just [(show (srvPrio sr)) ++ " " ++ (srvHost sr)]
+                then Just [(show (srvPrio sr)) ++ "\t" ++ (srvHost sr)]
                 else Nothing
 
 -- | Convert map elements of the form "subN...sub2.sub1.dom.bit"
