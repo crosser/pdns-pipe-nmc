@@ -6,6 +6,7 @@ import Prelude hiding (lookup, readFile)
 import System.Environment
 import System.IO hiding (readFile)
 import System.IO.Error
+import Data.Time.Clock.POSIX
 import Control.Exception
 import Text.Show.Pretty hiding (String)
 import Control.Monad
@@ -71,6 +72,12 @@ queryDom queryOp fqdn =
     "bit":dn:xs -> descendNmcDom queryOp xs $ seedNmcDom dn
     _           -> return $ Left "Only \".bit\" domain is supported"
 
+-- Number of ten minute intervals elapsed since creation of Namecoin
+-- on April 18, 2011. Another option would be to use blockcount
+-- but that would require another lookup, and we are cheap.
+-- Yet another - to use (const - expires_in) from the lookup.
+nmcAge = fmap (\x -> floor ((x - 1303070400) / 600)) getPOSIXTime
+
 -- Main entries
 
 mainPdnsNmc = do
@@ -111,6 +118,7 @@ mainPdnsNmc = do
 
     mainloop = forever $ do
       l <- io getLine
+      gen <- io $ nmcAge
       (count, cache) <- get
       case pdnsParse ver l of
         Left e -> io $ putStr $ pdnsReport e
@@ -118,7 +126,7 @@ mainPdnsNmc = do
           case preq of
             PdnsRequestQ qname qtype id _ _ _ -> do
               io $ queryDom (queryOpNmc cfg mgr id) qname
-                     >>= putStr . (pdnsOutQ ver count qname qtype)
+                     >>= putStr . (pdnsOutQ ver count gen qname qtype)
   -- debug
               io $ putStrLn $ "LOG\tRequest number " ++ (show count)
                            ++ " id: " ++ (show id)
@@ -134,40 +142,41 @@ mainPdnsNmc = do
                     pdnsReport ("AXFR for unknown id: " ++ (show xrq))
                 Just qname ->
                   io $ queryDom (queryOpNmc cfg mgr xrq) qname
-                    >>= putStr . (pdnsOutXfr ver count qname)
+                    >>= putStr . (pdnsOutXfr ver count gen qname)
             PdnsRequestPing -> io $ putStrLn "END"
 
   runStateT mainloop (0, empty) >> return ()
 
 -- helper for command-line tools
 
-pdnsOut key qt dom =
+pdnsOut gen key qt dom =
   case qt of
-    "AXFR" -> pdnsOutXfr 1 (-1) key dom
-    _      -> pdnsOutQ 1 (-1) key (rrType qt) dom
+    "AXFR" -> pdnsOutXfr 1 (-1) gen key dom
+    _      -> pdnsOutQ 1 (-1) gen key (rrType qt) dom
 
 -- query by key from Namecoin
 
-mainOne key qt = do
+mainOne gen key qt = do
   cfg <- readConfig confFile
   mgr <- newManager defaultManagerSettings
   dom <- queryDom (queryOpNmc cfg mgr (-1)) key
   putStrLn $ ppShow dom
-  putStr $ pdnsOut key qt dom
+  putStr $ pdnsOut gen key qt dom
 
 -- using file backend for testing json domain data
 
-mainFile key qt = do
+mainFile gen key qt = do
   dom <- queryDom queryOpFile key
   putStrLn $ ppShow dom
-  putStr $ pdnsOut key qt dom
+  putStr $ pdnsOut gen key qt dom
 
 -- Entry point
 
 main = do
   args <- getArgs
+  gen <- nmcAge
   case args of
     []                 -> mainPdnsNmc
-    [key, qtype]       -> mainOne key qtype
-    ["-f" ,key, qtype] -> mainFile key qtype
+    [key, qtype]       -> mainOne gen key qtype
+    ["-f" ,key, qtype] -> mainFile gen key qtype
     _ -> error $ "usage: empty args, or \"[-f] <fqdn> {<TYPE>|ANY|AXFR}\" (type in caps)"

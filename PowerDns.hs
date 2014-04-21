@@ -99,8 +99,8 @@ pdnsReport :: String -> String
 pdnsReport err = "LOG\tError: " ++ err ++ "\nFAIL\n"
 
 -- | Produce answer to the Q request
-pdnsOutQ :: Int -> Int -> String -> RRType -> Either String NmcDom -> String
-pdnsOutQ ver id name rrt edom =
+pdnsOutQ :: Int -> Int -> Int -> String -> RRType -> Either String NmcDom -> String
+pdnsOutQ ver id gen name rrt edom =
   let
     rrl = case rrt of
       RRTypeANY -> [ RRTypeSRV, RRTypeA, RRTypeAAAA, RRTypeCNAME
@@ -113,11 +113,11 @@ pdnsOutQ ver id name rrt edom =
       Left  err ->
         pdnsReport $ err ++ " in the " ++ (show rrt) ++ " query for " ++ name
       Right dom ->
-        formatDom ver id rrl name dom "END\n"
+        formatDom ver id gen rrl name dom "END\n"
 
 -- | Produce answer to the AXFR request
-pdnsOutXfr :: Int -> Int -> String -> Either String NmcDom -> String
-pdnsOutXfr ver id name edom =
+pdnsOutXfr :: Int -> Int -> Int -> String -> Either String NmcDom -> String
+pdnsOutXfr ver id gen name edom =
   let
     allrrs = [ RRTypeSRV, RRTypeA, RRTypeAAAA, RRTypeCNAME
              , RRTypeDNAME, RRTypeRP, RRTypeLOC, RRTypeNS
@@ -133,26 +133,26 @@ pdnsOutXfr ver id name edom =
       Left  err ->
         pdnsReport $ err ++ " in the AXFR request for " ++ name
       Right dom ->
-        walkDom (formatDom ver id allrrs) "END\n" name dom
+        walkDom (formatDom ver id gen allrrs) "END\n" name dom
 
-formatDom ver id rrl name dom acc =
-  foldr (\x a -> (formatRR ver id name dom x) ++ a) acc rrl
+formatDom ver id gen rrl name dom acc =
+  foldr (\x a -> (formatRR ver id gen name dom x) ++ a) acc rrl
 
-formatRR ver id name dom rrtype =
+formatRR ver id gen name dom rrtype =
   foldr (\x a -> "DATA\t" ++ v3ext ++ name ++ "\tIN\t" ++ (show rrtype)
               ++ "\t" ++ ttl ++ "\t" ++ (show id) ++ "\t" ++ x ++ "\n" ++ a)
-        "" $ dataRR rrtype name dom
+        "" $ dataRR rrtype gen name dom
     where
       v3ext = case ver of
         3 -> "0\t1\t"
         _ -> ""
       ttl = show 3600
 
-justl accessor _ dom = case accessor dom of
+justl accessor _ _ dom = case accessor dom of
   Nothing -> []
   Just xs -> xs
 
-justv accessor _ dom = case accessor dom of
+justv accessor _ _ dom = case accessor dom of
   Nothing -> []
   Just x  -> [x]
 
@@ -168,10 +168,10 @@ dataRR RRTypeA     = justl domIp
 dataRR RRTypeAAAA  = justl domIp6
 dataRR RRTypeCNAME = justv domAlias
 dataRR RRTypeDNAME = justv domTranslate
-dataRR RRTypeSOA   = \ name dom -> -- FIXME make realistic version field
+dataRR RRTypeSOA   = \ gen name dom ->
   let
     ns = case domNs dom of
-      Just (x:_) -> x           -- FIXME Terminate with a dot?
+      Just (x:_) -> x
       _          -> "."
     email = case domEmail dom of
       Nothing   -> "hostmaster." ++ name ++ "."
@@ -185,15 +185,16 @@ dataRR RRTypeSOA   = \ name dom -> -- FIXME make realistic version field
     -- Alternative would be to carry "top-ness" as a parameter through
     -- all the calls from the very top where we split the fqdn.
       case splitOn (pack ".") (pack name) of
-        [_,_] -> [ns ++ " " ++ email ++ " 0 10800 3600 604800 86400"]
+        [_,_] -> [ns ++ " " ++ email ++ " " ++ (show gen)
+                     ++ " 10800 3600 604800 86400"]
         _     -> []
-dataRR RRTypeRP    = \ _ dom ->
+dataRR RRTypeRP    = \ _ _ dom ->
   case domEmail dom of
     Nothing   -> []
     Just addr -> [(dotmail addr) ++ " ."]
 dataRR RRTypeLOC   = justv domLoc
-dataRR RRTypeNS    = justl domNs -- FIXME Terminate with a dot?
-dataRR RRTypeDS    = \ _ dom ->
+dataRR RRTypeNS    = justl domNs
+dataRR RRTypeDS    = \ _ _ dom ->
   case domDs dom of
     Nothing  -> []
     Just dss -> map dsStr dss
@@ -203,5 +204,5 @@ dataRR RRTypeDS    = \ _ dom ->
                ++ (show (dsHashType x)) ++ " "
                ++ (dsHashValue x)
 -- This only comes into play when data arrived _not_ from a PDNS request:
-dataRR (RRTypeError e) = \ _ _ ->
+dataRR (RRTypeError e) = \ _ _ _ ->
   ["; No data for bad request type " ++ e]

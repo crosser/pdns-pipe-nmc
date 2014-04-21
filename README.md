@@ -120,13 +120,10 @@ recursive resolution of the subdomain tree is enforced for when
 SOA record is requested. That would invalidate the reason to have
 caching in the first place.
 
-One possible workaround would be to use some derivative of absolute
-time, such as the number of hours elapsed since the epoch, for the
-SOA generation count.
-
-At the time of this writing, `pdns-pipe-nmc` simply reports zero as
-the SOA generation count. This leads to stale results until `pdnsd`
-is restarted.
+One possible workaround, currently implemented in `pdns-pipe-nmc`, is to
+use a derivative of absolute time, in our case the number of 10-munute
+intervals elapsed since Namecoin was concieved, as the SOA generation
+count.
 
 ## Getting the Software
 
