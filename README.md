@@ -93,18 +93,21 @@ Try at your risk.
 
 ## Unsolved problems
 
-The biggest problem by far is generating meaningful `SOA` records. DNS
-infrastructure (including PowerDNS implementation) relies on the "generation"
-field of the `SOA` RR when it makes decision to invalidate the cache. So,
-if there is zone data in the DNS cache, and a DNS server needs to respond
-to a request about an object from that zone, it first checks if the TTL
-has expired. If it has not, the server takes the data from the cache. If
-it has expired, the server asks the "authoritative source" (which is in
-our case the dnamecoin daemon) for the SOA record and compares the
-generation count in the received response with the number kept in the
-cache. If the "authoritative" SOA does not have a greater generation
-count than the cached SOA, DNS server **does not** refresh its cache,
-presuming that the data there is still valid.
+The biggest problem by far is generating meaningful `SOA` records.
+
+### SOA Version a.k.a. Generation Count
+
+DNS infrastructure (including PowerDNS implementation) relies on the
+"generation" field of the `SOA` RR when it makes decision to invalidate
+the cache. So, if there is zone data in the DNS cache, and a DNS server
+needs to respond to a request about an object from that zone, it first
+checks if the TTL has expired. If it has not, the server takes the data
+from the cache. If it has expired, the server asks the "authoritative
+source" (which is in our case the dnamecoin daemon) for the SOA record
+and compares the generation count in the received response with the
+number kept in the cache. If the "authoritative" SOA does not have a
+greater generation count than the cached SOA, DNS server **does not**
+refresh its cache, presuming that the data there is still valid.
 
 So, it is important that the generation count in the SOA record is
 incremented every time when the domain object, or any of the object that
@@ -124,6 +127,13 @@ One possible workaround, currently implemented in `pdns-pipe-nmc`, is to
 use a derivative of absolute time, in our case the number of 10-munute
 intervals elapsed since Namecoin was concieved, as the SOA generation
 count.
+
+### Nameserver field
+
+There is no "reasonable" value that could be placed there. Except
+possibly the name of the host on which the PoweDNS instance is running,
+in the `.bit` zone. Currently, `pdns-pipe-nmc` just puts a dot "."
+there, and no problems where noticed so far.
 
 ## Getting the Software
 
