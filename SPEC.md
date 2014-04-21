@@ -1,5 +1,18 @@
 % JSON Domain Format as Implemented by Pdns-Pipe-Nmc
 
+This document is based on
+[Namecoin Domain Name Specification](https://wiki.namecoin.info/index.php?title=Domain_Name_Specification).
+It tries to follow it closely, and clarify parts that are not
+specified, or specified ambiguously, in the original document.
+
+One notable deviation is the specification of `"delegate"` and `"import"`
+attributes: domain objects to which their value point are
+replacing/merging to the domain object in which they are defined.
+This seems to be in line with at least one existing "real world"
+implementation.
+
+This specification is implemented by the `pdns-pipe-nmc` program.
+
 ## Data Format
 
 ### `DomObj` Object
@@ -51,7 +64,7 @@ or a JSON `Map`, with the following attributes, all optional:
 | 2 | Int    | Priority |
 | 3 | Int    | Weight   |
 | 4 | Int    | Port     |
-| 5 | String | Hostname |
+| 5 | String | FQDN     |
 
 #### Notes
 
@@ -108,8 +121,8 @@ two levels higher than the `SRV` record would. For example, a
 corresponding to the FQDN "sub.dom.bit" with the value
 
 ```
-"service": [ ["imap", "tcp", 0, 0, 143, "mail.host.com." ],
-             ["smtp", "tcp", 0, 0,  25, "relay.host.com."] ]
+"service": [ ["imap", "tcp", 0, 0, 143, "mail.host.com" ],
+             ["smtp", "tcp", 0, 0,  25, "relay.host.com"] ]
 ```
 
 corresponds to two `SRV` RRs at two different points in the
@@ -126,6 +139,13 @@ level:
 ```
 sub.dom.bit. IN MX 0 relay.host.com.
 ```
+
+Note: Hostname element **must** be specified as fully qualified domain
+name of the host, and **must not** terminate with a dot. 
+This requirement seems to be in line with many existing definitions in
+the blockchain; however it deviates from the BIND zone file format, in
+which names that have not terminating dot are automatically expanded
+by attaching the current origin zone to the end of the name.
 
 #### ip attribute
 
@@ -177,6 +197,9 @@ Translates into `CNAME` RR. Invalidates all other attributes except
 the element of the `"map"` with empty key. Such element is analysed
 and its contents merged into the base domain before the check.
 
+Note: Hostname element **must** be specified as fully qualified domain
+name of the host, and **must not** terminate with a dot. 
+
 #### translate attribute
 
 Translates into `DNAME` RR. Invalidates the contents of the `"map"`
@@ -205,6 +228,10 @@ format unspecified at the time of this writing.
 Translates into `NS` RR. Invalidates all other attributes, except
 the element of the `"map"` with empty key. Such element is analysed
 and its contents merged into the base domain before the check.
+
+Note: the value of the attribute  **must** be specified as fully
+qualified domain name of the host, and **must not** terminate
+with a dot.
 
 #### delegate attribute
 
