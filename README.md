@@ -77,7 +77,7 @@ keep it guarded.
 so the communication will happen over DNSSEC protocol without the
 need to keep the signatures in the zone data itself. You probably
 would need to create signing key for the PowerDNS instance, and add
-the corresponding public key as "trused" into the configuration of
+the corresponding public key as "trusted" into the configuration of
 your resolvers.
 
 ## Status
@@ -91,11 +91,48 @@ and did not notice anomalies so far.
 
 Try at your risk.
 
+## Unsolved problems
+
+The biggest problem by far is generating meaningful `SOA` records. DNS
+infrastructure (including PowerDNS implementation) relies on the "generation"
+field of the `SOA` RR when it makes decision to invalidate the cache. So,
+if there is zone data in the DNS cache, and a DNS server needs to respond
+to a request about an object from that zone, it first checks if the TTL
+has expired. If it has not, the server takes the data from the cache. If
+it has expired, the server asks the "authoritative source" (which is in
+our case the dnamecoin daemon) for the SOA record and compares the
+generation count in the received response with the number kept in the
+cache. If the "authoritative" SOA does not have a greater generation
+count than the cached SOA, DNS server **does not** refresh its cache,
+presuming that the data there is still valid.
+
+So, it is important that the generation count in the SOA record is
+incremented every time when the domain object, or any of the object that
+it "include"-s or to which it "delegate"-s is changed.
+
+At present, there is no machanism for that. In most cases, simply
+summing the number of entries in `name_history`-s of all domain object
+involved in resolution would work, but this approach would produce
+wrong result when an "import" entry is removed from a domain, because
+in such case the sum would decrease. It would also not notice the
+changes in an object "include"-ed in a subdomain, unless complete
+recursive resolution of the subdomain tree is enforced for when
+SOA record is requested. That would invalidate the reason to have
+caching in the first place.
+
+One possible workaround would be to use some derivative of absolute
+time, such as the number of hours elapsed since the epoch, for the
+SOA generation count.
+
+At the time of this writing, `pdns-pipe-nmc` simply reports zero as
+the SOA generation count. This leads to stale results until `pdnsd`
+is restarted.
+
 ## Getting the Software
 
-### Source
-
 Check the [project homepage](http://www.average.org/pdns-pipe-nmc/).
+
+### Source
 
 Git [clone](git://git.average.org/git/pdns-pipe-nmc.git) or
 [browse](http://www.average.org/gitweb/?p=pdns-pipe-nmc.git;a=summary),
