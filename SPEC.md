@@ -29,7 +29,7 @@ or a JSON `Map`, with the following attributes, all optional:
 | i2p         | I2pObj                                |                                            |
 | freenet     | String                                |                                            |
 | alias       | String                                | Nullifies other attributes                 |
-| translate   | String                                | Nullifies other attributes                 |
+| translate   | String                                | Nullifies the "map" attribute              |
 | email       | String                                | Used in `SOA`                              |
 | loc         | String                                | Format suitable for `LOC`                  |
 | info        | JsonObj                               | Currently unspecified                      |
