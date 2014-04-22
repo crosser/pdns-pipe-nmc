@@ -340,8 +340,8 @@ is equivalent to
 ```
 "map": { "uk": { "map": { "www": { "alias" : "www.example.co.uk" }}}
        , "us": { "map": { "www": { "alias" : "www.example.com" }
-			, "smtp": { "alias" : "smtp.example.com" }}
-	       }
+                        , "smtp": { "alias" : "smtp.example.com" }}
+               }
        }
 ```
 
