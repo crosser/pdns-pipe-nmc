@@ -82,12 +82,12 @@ your resolvers.
 
 ## Status
 
-Alpha. It is insufficiently tested, and there are loose ends in the
-functionality. For example, version in the `SOA` record is bogus.
-Some of the the problems are due to incomplete and/or imprecise
-[definition of the domain data format](https://wiki.namecoin.info/index.php?title=Domain_Name_Specification)
-on the wiki. That said, I am using it to access some of the `.bit` websites
-and did not notice anomalies so far.
+Beta. It is mostly feature-complete, but insufficiently tested.
+It implements the data format specification (SPEC.md in the source
+distribution) that slightly deviates from the
+[official specification](https://wiki.namecoin.info/index.php?title=Domain_Name_Specification).
+I am using it to access some of the `.bit` websites and it works
+for me.
 
 Try at your risk.
 

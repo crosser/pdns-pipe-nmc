@@ -17,8 +17,9 @@ This specification is implemented by the `pdns-pipe-nmc` program.
 
 ### `DomObj` Object
 
-`DomObj` either a `String` containing a dotted quad (see Note below),
-or a JSON `Map`, with the following attributes, all optional:
+`DomObj` is a data structure that is associated with an FQDN. It is
+either a `String` containing a dotted quad (see Note below), or a
+JSON `Map`, with the following attributes, all optional:
 
 | Key         | Type                                  | Comment                                    |
 |-------------|---------------------------------------|--------------------------------------------|
@@ -188,7 +189,7 @@ Does not translate into any DNS RR. Contains Tor hidden service address.
 
 #### i2p attribute
 
-Does not translate into any DNS RR. Contains an object with three
+Does not translate into any DNS RR. It is a JSON Map with three
 optional String attributes: `"destination"`, `"name"` and `"b32"`.
 
 ```
