@@ -307,9 +307,6 @@ the current domain object.
 
 #### map attribute
 
-FIXME - explain handling of the keys with dots.
-Also, add checks to the code to disallow empty elements.
-
 JSON Map object containing subdomain names as its keys and domain
 objects as values. Element of the map with empty key "" has special
 meaning: the value of this map element is merged into the current
@@ -322,8 +319,29 @@ the empty element of the `"map"` has been recursively merged into
 the current object.
 
 ```
-"map": { "www": { "alias" : "www.example.com." }
+"map": { "www": { "alias" : "www.example.com" }
        , "www2": { "delegate": "d/example" }
+       }
+```
+
+Note: When a key contains dots ".", it is converted to a nested
+map.  If empty element appears as a result of split, such as when
+a dot is at the beginning or at the end of the key, or there are
+consequitive dots, such elemets are ignored. For example,
+
+```
+"map": { "www.uk": { "alias" : "www.example.co.uk" }
+       , "www..us": { "alias" : "www.example.com" }
+       , "smtp.us.": { "alias" : "smtp.example.com" }
+```
+
+is equivalent to
+
+```
+"map": { "uk": { "map": { "www": { "alias" : "www.example.co.uk" }}}
+       , "us": { "map": { "www": { "alias" : "www.example.com" }
+			, "smtp": { "alias" : "smtp.example.com" }}
+	       }
        }
 ```
 

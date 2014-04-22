@@ -117,7 +117,8 @@ splitSubdoms base =
           stow fqdn sdom acc = insertWith mergeNmcDom fqdn' sdom' acc
             where
               (fqdn', sdom') =
-                nest (map unpack (splitOn (pack ".") (pack fqdn)), sdom)
+                nest (filter (/= "") (splitOnDots fqdn), sdom)
+              splitOnDots s = map unpack (splitOn (pack ".") (pack s))
               nest ([], v)   = (fqdn, v) -- can split result be empty?
               nest ([k], v)  = (k, v)
               nest (k:ks, v) =
