@@ -307,6 +307,9 @@ the current domain object.
 
 #### map attribute
 
+FIXME - explain handling of the keys with dots.
+Also, add checks to the code to disallow empty elements.
+
 JSON Map object containing subdomain names as its keys and domain
 objects as values. Element of the map with empty key "" has special
 meaning: the value of this map element is merged into the current
