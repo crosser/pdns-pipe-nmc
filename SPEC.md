@@ -182,30 +182,58 @@ translates into one AAAA RR:
 
 Does not translate into any DNS RR. Contains Tor hidden service address.
 
+```
+"tor": "eqt5g4fuenphqinx.onion"
+```
+
 #### i2p attribute
 
 Does not translate into any DNS RR. Contains an object with three
 optional String attributes: `"destination"`, `"name"` and `"b32"`.
 
+```
+"i2p": { "destination": "XaZscx...0jGAAAA"
+       , "name": "example.i2p"
+       , "b32" : "ukeu...nkdq.b32.i2p"
+       }
+```
+
 #### freenet attribute
 
 Does not translate into any DNS RR. Contains Freesite key.
 
+```
+"freenet": "USK@0I8g...xbZ4,AQACAAE/Example/42/"
+```
+
 #### alias attribute
 
-Translates into `CNAME` RR. Invalidates all other attributes except
-the element of the `"map"` with empty key. Such element is analysed
-and its contents merged into the base domain before the check.
+Translates into `CNAME` RR. Invalidates all other attributes.
 
-Note: Hostname element **must** be specified as fully qualified domain
-name of the host, and **must not** terminate with a dot. 
+```
+"alias": "realhost.example.bit"
+```
+
+Notes:
+* Hostname **must** be specified as fully qualified domain
+  name of the host, and **must not** terminate with a dot. 
+* Element of the `"map"` with empty key, `"delegate"` and `"import"`
+  are processed before this invalidation takes place.
 
 #### translate attribute
 
 Translates into `DNAME` RR. Invalidates the contents of the `"map"`
-attribute, except the element of the `"map"` with empty key. Such
-element is analysed and its contents merged into the base domain
-before the check.
+attribute.
+
+```
+"translate": "otherhost.bit"
+```
+
+Notes:
+* Hostname **must** be specified as fully qualified domain
+  name of the host, and **must not** terminate with a dot. 
+* Element of the `"map"` with empty key, `"delegate"` and `"import"`
+  are processed before this invalidation takes place.
 
 #### email attribute
 
@@ -213,41 +241,68 @@ Translates into the `email` element of the SOA and RP RRs. The
 value `"email":"user@domain.tld"` becomes `user.domain.tld.`
 in the DNS record.
 
+```
+"email": "hostmaster@example.bit"
+```
+
 #### loc attribute
 
 Translates into `LOC` RR. Value must conform to the format defined
 by [RFC-1876](http://tools.ietf.org/html/rfc1876).
 
+```
+"loc": "46 31 18.000 N 6 34 26.000 E 401.00m 1m 10000m 10m"
+```
+
 #### info attribute
 
 Does not translate into any DNS RR. Contains a JSON object with
-format unspecified at the time of this writing.
+format unspecified at the time of this writing. Intented for
+the registrant information.
 
 #### ns attribute
 
-Translates into `NS` RR. Invalidates all other attributes, except
-the element of the `"map"` with empty key. Such element is analysed
-and its contents merged into the base domain before the check.
+Translates into `NS` RR. Because it effectively delegates all
+control over the domain to external nameservers, it also invalidates
+all other attributes.
 
-Note: the value of the attribute  **must** be specified as fully
-qualified domain name of the host, and **must not** terminate
-with a dot.
+```
+"ns": ["ns.myserver.net", "192.168.3.4"]
+```
+
+Notes:
+* Hostname **must** be specified as fully qualified domain
+  name of the host, and **must not** terminate with a dot. 
+* Element of the `"map"` with empty key, `"delegate"` and `"import"`
+  are processed before this invalidation takes place.
 
 #### delegate attribute
 
 Does not translate into any DNS RR. Instead, the value is used as
 a key for namecoin lookup (i.e. the value must be specified with
 the namespace prefix), and the result of the lookup replaces all
-other attributes, except the element of the `"map"` with empty key.
-Such element is analysed and its contents merged into the base
-domain before the check.
+other attributes
+
+```
+"delegate": "s/example74845"
+```
+
+Notes:
+* Element of the `"map"` with empty key, `"delegate"` and
+  `"import"` are processed before this invalidation takes place.
+* Unlike many other attributes, this can only contain a single
+  string as the value, rather than a list.
 
 #### import attribute
 
 Does not translate into any DNS RR. Instead, the value is used as
-a key for namecoin lookup (i.e. the value must be specified with
+the key for namecoin lookup (i.e. the value must be specified with
 the namespace prefix), and the result of the lookup is merged with
 the current domain object.
+
+```
+"import": ["dd/example", "s/example6473"]
+```
 
 #### map attribute
 
@@ -262,6 +317,12 @@ current domain object (`import` and `delegate` lookups) start when
 the empty element of the `"map"` has been recursively merged into
 the current object.
 
+```
+"map": { "www": { "alias" : "www.example.com." }
+       , "www2": { "delegate": "d/example" }
+       }
+```
+
 #### fingerprint attribute
 
 Does not translate into any DNS RR. Contains a list of TLS
@@ -271,12 +332,27 @@ certificate fingerprints. Deprecated.
 
 Intended to carry attributes as per
 [RFC-6698](http://tools.ietf.org/html/rfc6698) ("DANE").
-As of this writing, the specification is under discussion.
+
+```
+"tls": {
+  "tcp": {
+           { "443": [ [1, "660008F9...7621B787", 1] ]
+           , "25": [ [1, "660008F9...7621B787", 1] ]
+           }
+         }
+       }
+```
 
 #### ds attribute
 
 Translates into `DS` RR. Carries attributes defined by
 [RFC-4034](http://tools.ietf.org/html/rfc4034).
+
+```
+"ds": [ [31381,8,1,"pA1W...ceTI="]
+      , [31381,8,2,"toHB...ndexitQ6j8E="]
+      ]
+```
 
 ### Lookup Sequence
 
@@ -317,7 +393,7 @@ recursive sequece:
    "normalized" by removal of attributes that are nullified by the
    presence of other attributes.
 
-Note that the process involves recursion nested to three levels.
+Note that the process involves recursion nested levels deep.
 
 ### Merging Procedure
 
