@@ -83,8 +83,9 @@ your resolvers.
 ## Status
 
 Beta. It is mostly feature-complete, but insufficiently tested.
-It implements the data format specification (SPEC.md in the source
-distribution) that slightly deviates from the
+It implements the
+[data format specification](http://www.average.org/pdns-pipe-nmc/spec.html)
+(SPEC.md in the source distribution) that slightly deviates from the
 [official specification](https://wiki.namecoin.info/index.php?title=Domain_Name_Specification).
 I am using it to access some of the `.bit` websites and it works
 for me.

@@ -1,0 +1,5 @@
+#!/bin/sh
+
+pandoc -f markdown -t html5 --self-contained -o /var/www/average/pdns-pipe-nmc/index.html README.md 
+pandoc -f markdown -t html5 --self-contained -o /var/www/average/pdns-pipe-nmc/spec.html SPEC.md 
+
