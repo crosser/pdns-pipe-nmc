@@ -4,6 +4,7 @@ module Main where
 
 import Prelude hiding (lookup, readFile)
 import System.Environment
+import System.Console.GetOpt
 import System.IO hiding (readFile)
 import System.IO.Error
 import Data.Time.Clock.POSIX
@@ -78,7 +79,7 @@ queryDom queryOp fqdn =
 -- Yet another - to use (const - expires_in) from the lookup.
 nmcAge = fmap (\x -> floor ((x - 1303070400) / 600)) getPOSIXTime
 
--- Main entries
+-- run a PowerDNS coprocess. Negotiate ABI version and execute requests.
 
 mainPdnsNmc = do
 
@@ -156,7 +157,7 @@ pdnsOut gen key qt dom =
     "AXFR" -> pdnsOutXfr 1 (-1) gen key dom
     _      -> pdnsOutQ 1 (-1) gen key (rrType qt) dom
 
--- query by key from Namecoin
+-- run one query by key from Namecoin, print domain object and answer
 
 mainOne gen key qt = do
   cfg <- readConfig confFile
@@ -165,7 +166,7 @@ mainOne gen key qt = do
   putStrLn $ ppShow dom
   putStr $ pdnsOut gen key qt dom
 
--- using file backend for testing json domain data
+-- get data from the file, print domain object and answer
 
 mainFile gen key qt = do
   dom <- queryDom queryOpFile key
@@ -177,8 +178,12 @@ mainFile gen key qt = do
 main = do
   args <- getArgs
   gen <- nmcAge
+  let
+    with f xs = case xs of
+      [qfqdn, qtype]       -> f gen qfqdn qtype
+      _ -> error $ "usage: empty args, or \"[-f] <fqdn> {<TYPE>|ANY|AXFR}\""
+                ++ " (type in caps)"
   case args of
-    []                 -> mainPdnsNmc
-    [key, qtype]       -> mainOne gen key qtype
-    ["-f" ,key, qtype] -> mainFile gen key qtype
-    _ -> error $ "usage: empty args, or \"[-f] <fqdn> {<TYPE>|ANY|AXFR}\" (type in caps)"
+    []      -> mainPdnsNmc
+    "-f":xs -> with mainFile xs
+    _       -> with mainOne args
