@@ -42,10 +42,10 @@ mergeIncl queryOp depth base = do
     base' = mbase {domDelegate = Nothing, domImport = Nothing}
   -- print base
   if depth <= 0 then return $ Left "Nesting of imports is too deep"
-  else case ((domDelegate mbase), (domImport mbase)) of
-    (Nothing,  Nothing  ) -> return $ Right base'
-    (Nothing,  Just keys) -> foldM mergeIncl1 (Right base') keys
-    (Just key, _        ) -> mergeIncl1 (Right emptyNmcDom) key
+    else case ((domDelegate mbase), (domImport mbase)) of
+      (Nothing,  Nothing  ) -> return $ Right base'
+      (Nothing,  Just keys) -> foldM mergeIncl1 (Right base') keys
+      (Just key, _        ) -> mergeIncl1 (Right emptyNmcDom) key
   where
     mergeIncl1 (Left  err) _   = return $ Left err -- can never happen
     mergeIncl1 (Right acc) key = do
