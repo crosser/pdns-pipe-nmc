@@ -1,0 +1,45 @@
+name:                pdns-pipe-nmc
+version:             0.9.0.0
+synopsis:            Namecoin pipe backend for PowerDNS
+description:         Realtime bridge between Namecoin "d/" namespace
+                     (http://namecoin.info/) and DNS implemented as
+                     a pipe backend coprocess for PowerDns
+                     (http://www.powerdns.com/).
+homepage:            http://www.average.org/pdns-pipe-nmc/
+license:             OtherLicense
+license-file:        LICENSE
+author:              Eugene Crosser
+maintainer:          crosser@average.org
+copyright:           2014, Eugene Crosser
+category:            Database
+build-type:          Simple
+extra-source-files:  README.md
+cabal-version:       >=1.10
+
+executable pdns-pipe-nmc
+  main-is:             pdns-pipe-nmc.hs
+  other-modules:       Config
+                     , JsonRpcClient
+                     , NmcDom
+                     , NmcRpc
+                     , NmcTransform
+                     , PowerDns
+  other-extensions:    OverloadedStrings
+  build-depends:       base >=4.6 && <4.7
+                     , bytestring >=0.10 && <0.11
+                     , text >=0.11 && <0.12
+                     , split >=0.2 && <0.3
+                     , containers >=0.5 && <0.6
+                     , aeson >=0.6 && <0.7
+                     , ConfigFile >=1.1 && <1.2
+                     , MissingH >=1.2 && <1.3
+                     , vector >=0.10 && <0.11
+                     , unordered-containers >=0.2 && <0.3
+                     , data-default-class >=0.0.1 && <1.0
+                     , http-client >=0.3 && <1.0
+                     , http-types >=0.8 && <1.0
+                     , mtl >=2.0 && <3.0
+                     , pretty-show >=1.2 && <2.0
+                     , time >=1.4 && <2.0
+  -- hs-source-dirs:      
+  default-language:    Haskell98

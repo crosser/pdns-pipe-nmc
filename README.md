@@ -15,16 +15,23 @@ frontend, and has simple backend interface.
 
 ## Building
 
-The program is built as a single executable to be run by PowerDns's
-pipe backend. It is written in [Haskell](http://www.haskell.org/).
-There is no `cabal` configuration at the moment, so to build it,
-simply run
+The program is a single executable to be run by PowerDns's pipe
+backend. It is written in [Haskell](http://www.haskell.org/).
+If you have haskell installed on your system, run
 
 ```
-ghc --make pdns-pipe-nmc
+cabal configure
 ```
 
-and install any missing packages it complains about.
+followed by
+
+```
+cabal build
+```
+
+and hopefully it will tell you what packages are missing. You can
+install them either with your OS package manager (if they exist in
+your distribution) or with `cabal install`.
 
 ## Installing
 

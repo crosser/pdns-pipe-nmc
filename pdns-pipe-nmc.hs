@@ -21,7 +21,7 @@ import Data.Map.Lazy (Map, empty, lookup, insert, delete, size)
 import Data.Aeson (encode, decode, Value(..))
 import Network.HTTP.Types
 import Network.HTTP.Client
-import Data.Default (def)
+import Data.Default.Class (def)
 
 import JsonRpcClient
 import Config
