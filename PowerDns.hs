@@ -9,6 +9,7 @@ module PowerDns ( RRType(..)
 
 import Data.Text.Lazy (splitOn, pack)
 import Data.Map.Lazy (foldrWithKey)
+import Data.Default.Class (def)
 
 import NmcDom
 
@@ -177,7 +178,7 @@ dataRR RRTypeSOA   = \ gen name dom ->
       Nothing   -> "hostmaster." ++ name ++ "."
       Just addr -> dotmail addr
   in
-    if dom == emptyNmcDom then []
+    if dom == def then []
     else
     -- Follows a relatively ugly hack to figure if we are at the top
     -- level domain ("something.bit"). Only in such case we provide

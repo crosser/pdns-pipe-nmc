@@ -5,7 +5,6 @@ module NmcDom   ( NmcDom(..)
                 , NmcRRI2p(..)
                 , NmcRRTls(..)
                 , NmcRRDs(..)
-                , emptyNmcDom
                 , mergeNmcDom
                 ) where
 
@@ -20,6 +19,7 @@ import Data.Map (Map, unionWith)
 import qualified Data.HashMap.Strict as H (lookup)
 import Data.Aeson
 import Data.Aeson.Types
+import Data.Default.Class
 
 -- Variant of Aeson's `.:?` that interprets a String as a
 -- single-element list, so it is possible to have either
@@ -157,14 +157,19 @@ data NmcDom = NmcDom    { domService     :: Maybe [NmcRRService]
                         , domSrv         :: Maybe [String] -- Synthetic
                         } deriving (Show, Eq)
 
+instance Default NmcDom where
+  def = NmcDom Nothing Nothing Nothing Nothing Nothing Nothing Nothing
+               Nothing Nothing Nothing Nothing Nothing Nothing Nothing
+               Nothing Nothing Nothing Nothing Nothing Nothing
+
 instance FromJSON NmcDom where
         -- Wherever we expect a domain object, there may be a string
         -- containing IPv4 address. Interpret it as such.
         -- Question: shall we try to recognize IPv6 addresses too?
         parseJSON (String s) =
                  return $ if isIPv4 s'
-                            then emptyNmcDom { domIp = Just [s'] }
-                            else emptyNmcDom
+                            then def { domIp = Just [s'] }
+                            else def
                           where
                             s' = unpack s
                             isIPv4 x = all isNibble $ splitOn "." x
@@ -227,8 +232,3 @@ instance Mergeable NmcDom where
 
 mergeNmcDom :: NmcDom -> NmcDom -> NmcDom
 mergeNmcDom = merge
-
-emptyNmcDom = NmcDom Nothing Nothing Nothing Nothing Nothing Nothing
-                     Nothing Nothing Nothing Nothing Nothing Nothing
-                     Nothing Nothing Nothing Nothing Nothing Nothing
-                     Nothing Nothing

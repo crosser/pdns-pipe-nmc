@@ -9,6 +9,7 @@ import Data.Map.Lazy (empty, lookup, delete, size, singleton
                      , foldrWithKey, insert, insertWith)
 import Control.Monad (foldM)
 import Data.Aeson (decode)
+import Data.Default.Class (def)
 
 import NmcDom
 
@@ -45,7 +46,7 @@ mergeIncl queryOp depth base = do
     else case ((domDelegate mbase), (domImport mbase)) of
       (Nothing,  Nothing  ) -> return $ Right base'
       (Nothing,  Just keys) -> foldM mergeIncl1 (Right base') keys
-      (Just key, _        ) -> mergeIncl1 (Right emptyNmcDom) key
+      (Just key, _        ) -> mergeIncl1 (Right def) key
   where
     mergeIncl1 (Left  err) _   = return $ Left err -- can never happen
     mergeIncl1 (Right acc) key = do
@@ -85,10 +86,10 @@ expandSrv base =
         where
           addSrvMx sr acc = sub1 `mergeNmcDom` acc
             where
-              sub1 = emptyNmcDom { domMap = Just (singleton proto sub2)
+              sub1 = def { domMap = Just (singleton proto sub2)
                                  , domMx = maybemx}
-              sub2 = emptyNmcDom { domMap = Just (singleton srvid sub3) }
-              sub3 = emptyNmcDom { domSrv = Just [srvStr] }
+              sub2 = def { domMap = Just (singleton srvid sub3) }
+              sub3 = def { domSrv = Just [srvStr] }
               proto = "_" ++ (srvProto sr)
               srvid = "_" ++ (srvName sr)
               srvStr =  (show (srvPrio sr)) ++ "\t"
@@ -111,7 +112,7 @@ splitSubdoms base =
   in
     case domMap base of
       Nothing -> base'
-      Just sdmap -> (emptyNmcDom { domMap = Just sdmap' }) `mergeNmcDom` base'
+      Just sdmap -> (def { domMap = Just sdmap' }) `mergeNmcDom` base'
         where
           sdmap' = foldrWithKey stow empty sdmap
           stow fqdn sdom acc = insertWith mergeNmcDom fqdn' sdom' acc
@@ -122,7 +123,7 @@ splitSubdoms base =
               nest ([], v)   = (fqdn, v) -- can split result be empty?
               nest ([k], v)  = (k, v)
               nest (k:ks, v) =
-                nest (ks, emptyNmcDom { domMap = Just (singleton k v) })
+                nest (ks, def { domMap = Just (singleton k v) })
  
 -- | Presence of some elements require removal of some others
 normalizeDom :: NmcDom -> NmcDom
@@ -132,7 +133,7 @@ normalizeDom dom = foldr id dom [ translateNormalizer
   where
     nsNormalizer dom = case domNs dom of
       Nothing  -> dom
-      Just ns  -> emptyNmcDom { domNs = domNs dom, domEmail = domEmail dom }
+      Just ns  -> def { domNs = domNs dom, domEmail = domEmail dom }
     translateNormalizer dom = case domTranslate dom of
       Nothing  -> dom
       Just tr  -> dom { domMap = Nothing }
@@ -152,14 +153,14 @@ descendNmcDom queryOp subdom base = do
         Left err     -> return base'
         Right base'' ->
           case domMap base'' of
-            Nothing  -> return $ Right emptyNmcDom
+            Nothing  -> return $ Right def
             Just map ->
               case lookup d map of
-                Nothing  -> return $ Right emptyNmcDom
+                Nothing  -> return $ Right def
                 Just sub -> descendNmcDom queryOp ds sub
 
 -- | Initial NmcDom populated with "import" only, suitable for "descend"
 seedNmcDom ::
   String        -- ^ domain key (without namespace prefix)
   -> NmcDom     -- ^ resulting seed domain
-seedNmcDom dn = emptyNmcDom { domImport = Just (["d/" ++ dn])}
+seedNmcDom dn = def { domImport = Just (["d/" ++ dn])}
