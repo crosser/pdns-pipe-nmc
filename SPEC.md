@@ -365,6 +365,20 @@ Intended to carry attributes as per
        }
 ```
 
+translates into:
+
+```
+_443._tcp      TLSA  (3 0 1 660008F9...7621B787)
+_25._tcp       TLSA  (3 0 1 660008F9...7621B787)
+```
+
+The third element of the `TlsObj` heterogenous array is an extention
+to the DANE definition. Value `0` means that this rule is not enforced
+upon subdomains, value `1` means that it is enforced on subdomains.
+Rule defined inside a subdomain `DomObj` that specifies `0` on a rule
+existing in upper domain, that specifies `1` should be ignored. I.e.
+subdomain rule cannot revoke enforcement imposed by an upper domain rule.
+
 #### ds attribute
 
 Translates into `DS` RR. Carries attributes defined by
