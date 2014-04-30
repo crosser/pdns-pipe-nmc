@@ -102,6 +102,30 @@ expandSrv base =
                    && srvPort sr == 25
                 then Just [(show (srvPrio sr)) ++ "\t" ++ (srvHost sr)]
                 else Nothing
+{-
+-- | replace Tls with Tlsa down in the Map
+--   This function is almost, but not quite, entirely unlike expandSrv.
+expandTls :: NmcDom -> NmcDom
+expandTls base =
+  let
+    base' = base { domTls = Nothing }
+  in
+    case domTls base of
+      Nothing -> base'
+      Just sl -> foldr addTlsa base' sl
+        where
+          addTlsa sr acc = sub1 `mergeNmcDom` acc
+            where
+              sub1 = def { domMap = Just (singleton proto sub2) }
+              sub2 = def { domMap = Just (singleton port sub3) }
+              sub3 = def { domTlsa = Just [tlsStr] }
+              proto = "_" ++ (tlsProto sr)
+              port = "_" ++ (tlsName sr)
+              tlsStr =  (show (tlsPrio sr)) ++ "\t"
+                     ++ (show (tlsWeight sr)) ++ " "
+                     ++ (show (tlsPort sr)) ++ " "
+                     ++ (tlsHost sr)
+-}
 
 -- | Convert map elements of the form "subN...sub2.sub1.dom.bit"
 --   into nested map and merge it
