@@ -22,6 +22,8 @@ import Data.Aeson (encode, decode, Value(..))
 import Network.HTTP.Types
 import Network.HTTP.Client
 import Data.Default.Class (def)
+-- if you have data-default-0.5.1 import this instead of Data.Default.Class:
+-- import Data.Default (def)
 
 import JsonRpcClient
 import Config
