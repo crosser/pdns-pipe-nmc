@@ -15,7 +15,7 @@ import NmcDom
 
 data RRType = RRTypeSRV   | RRTypeA   | RRTypeAAAA | RRTypeCNAME
             | RRTypeDNAME | RRTypeSOA | RRTypeRP   | RRTypeLOC
-            | RRTypeNS    | RRTypeDS  | RRTypeMX
+            | RRTypeNS    | RRTypeDS  | RRTypeMX   | RRTypeTLSA
             | RRTypeANY   | RRTypeError String
 
 instance Show RRType where
@@ -30,6 +30,7 @@ instance Show RRType where
   show RRTypeNS        = "NS"
   show RRTypeDS        = "DS"
   show RRTypeMX        = "MX"
+  show RRTypeTLSA      = "TLSA"
   show RRTypeANY       = "ANY"
   show (RRTypeError s) = "Unknown RR type: " ++ (show s)
 
@@ -45,6 +46,7 @@ rrType qt = case qt of
   "NS"      -> RRTypeNS
   "DS"      -> RRTypeDS
   "MX"      -> RRTypeMX
+  "TLSA"    -> RRTypeTLSA
   "ANY"     -> RRTypeANY
   _         -> RRTypeError qt
 
@@ -165,6 +167,7 @@ dotmail addr =
 
 dataRR RRTypeSRV   = justl domSrv
 dataRR RRTypeMX    = justl domMx
+dataRR RRTypeTLSA  = justl domTlsa
 dataRR RRTypeA     = justl domIp
 dataRR RRTypeAAAA  = justl domIp6
 dataRR RRTypeCNAME = justv domAlias

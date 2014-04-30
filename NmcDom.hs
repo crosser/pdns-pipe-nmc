@@ -155,12 +155,13 @@ data NmcDom = NmcDom    { domService     :: Maybe [NmcRRService]
                         , domDs          :: Maybe [NmcRRDs]
                         , domMx          :: Maybe [String] -- Synthetic
                         , domSrv         :: Maybe [String] -- Synthetic
+                        , domTlsa        :: Maybe [String] -- Synthetic
                         } deriving (Show, Eq)
 
 instance Default NmcDom where
   def = NmcDom Nothing Nothing Nothing Nothing Nothing Nothing Nothing
                Nothing Nothing Nothing Nothing Nothing Nothing Nothing
-               Nothing Nothing Nothing Nothing Nothing Nothing
+               Nothing Nothing Nothing Nothing Nothing Nothing Nothing
 
 instance FromJSON NmcDom where
         -- Wherever we expect a domain object, there may be a string
@@ -197,6 +198,7 @@ instance FromJSON NmcDom where
                 <*> o .:? "ds"
                 <*> return Nothing -- domMx not parsed
                 <*> return Nothing -- domSrv not parsed
+                <*> return Nothing -- domTlsa not parsed
         parseJSON _ = empty
 
 instance Mergeable NmcDom where
@@ -220,6 +222,7 @@ instance Mergeable NmcDom where
                                 , domDs =          mergelm domDs
                                 , domMx =          mergelm domMx
                                 , domSrv =         mergelm domSrv
+                                , domTlsa =        mergelm domTlsa
                                 }
           where
                 mergelm x = merge (x sub) (x dom)
