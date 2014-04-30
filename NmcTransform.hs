@@ -148,6 +148,10 @@ splitSubdoms base =
               nest ([k], v)  = (k, v)
               nest (k:ks, v) =
                 nest (ks, def { domMap = Just (singleton k v) })
+
+-- | transfer some elements of `base` into `sub`, notably TLSA
+propagate :: NmcDom -> NmcDom -> NmcDom
+propagate base sub = sub -- FIXME implement it
  
 -- | Presence of some elements require removal of some others
 normalizeDom :: NmcDom -> NmcDom
@@ -181,7 +185,7 @@ descendNmcDom queryOp subdom base = do
             Just map ->
               case lookup d map of
                 Nothing  -> return $ Right def
-                Just sub -> descendNmcDom queryOp ds sub
+                Just sub -> descendNmcDom queryOp ds $ propagate base'' sub
 
 -- | Initial NmcDom populated with "import" only, suitable for "descend"
 seedNmcDom ::
