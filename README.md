@@ -159,7 +159,8 @@ There is a binary built for x86_64 Linux with glibc6:
 
 | Executable file                                                                                                      | PGP                                                                 |
 |----------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------|
-| [**pdns-pipe-nmc.linux-glibc6.x86_64.2014-04-22.git-108b6c2**](http://www.average.org/pdns-pipe-nmc/pdns-pipe-nmc.linux-glibc6.x86_64.2014-04-22.git-108b6c2) | [sig](http://www.average.org/pdns-pipe-nmc/pdns-pipe-nmc.linux-glibc6.x86_64.2014-04-22.git-108b6c2.sig) |
+| [**pdns-pipe-nmc.linux-glibc6.x86_64.2014-05-01.git-0.9.0.0**](http://www.average.org/pdns-pipe-nmc.linux-glibc6.x86_64.2014-05-01.git-0.9.0.0) | [sig](http://www.average.org/pdns-pipe-nmc/pdns-pipe-nmc.linux-glibc6.x86_64.2014-05-01.git-0.9.0.0.sig) |
+| [pdns-pipe-nmc.linux-glibc6.x86_64.2014-04-22.git-108b6c2](http://www.average.org/pdns-pipe-nmc/pdns-pipe-nmc.linux-glibc6.x86_64.2014-04-22.git-108b6c2) | [sig](http://www.average.org/pdns-pipe-nmc/pdns-pipe-nmc.linux-glibc6.x86_64.2014-04-22.git-108b6c2.sig) |
 | [pdns-pipe-nmc.linux-glibc6.x86_64.2014-04-20.git-e9bd43f](http://www.average.org/pdns-pipe-nmc/pdns-pipe-nmc.linux-glibc6.x86_64.2014-04-20.git-e9bd43f) | [sig](http://www.average.org/pdns-pipe-nmc/pdns-pipe-nmc.linux-glibc6.x86_64.2014-04-20.git-e9bd43f.sig) |
 
 ## Author
