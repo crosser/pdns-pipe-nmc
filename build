@@ -14,5 +14,5 @@ case $? in
 0) ;;
 *) echo build falied; exit 1 ;;
 esac
-mv "$file" "$file.$sfx" || exit 1
+mv "dist/build/$file/$file" "$file.$sfx" || exit 1
 gpg --detach-sign "$file.$sfx"
