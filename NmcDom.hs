@@ -1,11 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module NmcDom   ( NmcDom(..)
-                , NmcRRService(..)
+                , NmcRRSrv(..)
                 , NmcRRI2p(..)
-                , NmcRRTls(..)
+                , NmcRRTlsa(..)
                 , NmcRRDs(..)
-                , mergeNmcDom
+                , merge
                 ) where
 
 import Prelude hiding (length)
@@ -34,6 +34,20 @@ obj .:/ key = case H.lookup key obj of
                         String s -> parseJSON $ Array (singleton v)
                         _        -> parseJSON v
 
+makeMx :: Object -> Parser (Maybe [String])
+makeMx o = return Nothing -- FIXME
+{-
+  case H.lookup "service" o of
+    Nothing          -> pure Nothing
+    Just (Array saa) -> return $ Just $ fmap mxStr $ filter mxMatch saa
+      where
+        mxMatch sa = (sa ! 0) == "smtp" && (sa ! 1) == "tcp" && (sa ! 4) == 25
+        mxStr sa = (sa ! 2) ++ "\t" ++ (sa ! 5)
+    _                -> empty
+-}
+makeSubmap :: Object -> Parser (Maybe (Map String NmcDom))
+makeSubmap o = o .:? "map" -- FIXME
+
 class Mergeable a where
         merge :: a -> a -> a -- bias towads second arg
 
@@ -56,28 +70,14 @@ instance Mergeable a => Mergeable (Maybe a) where
 instance Eq a => Mergeable [a] where
         merge xs ys = union xs ys
 
-data NmcRRService = NmcRRService
-                        { srvName       :: String
-                        , srvProto      :: String
-                        , srvPrio       :: Int
+data NmcRRSrv = NmcRRSrv
+                        { srvPrio       :: Int
                         , srvWeight     :: Int
                         , srvPort       :: Int
                         , srvHost       :: String
                         } deriving (Show, Eq)
 
-instance FromJSON NmcRRService where
-        parseJSON (Array a) =
-                if length a == 6 then NmcRRService
-                        <$> parseJSON (a ! 0)
-                        <*> parseJSON (a ! 1)
-                        <*> parseJSON (a ! 2)
-                        <*> parseJSON (a ! 3)
-                        <*> parseJSON (a ! 4)
-                        <*> parseJSON (a ! 5)
-                else empty
-        parseJSON _ = empty
-
-instance Mergeable NmcRRService where
+instance Mergeable NmcRRSrv where
         merge _ b = b
 
 data NmcRRI2p = NmcRRI2p
@@ -96,22 +96,13 @@ instance FromJSON NmcRRI2p where
 instance Mergeable NmcRRI2p where
         merge _ b = b
 
-data NmcRRTls = NmcRRTls
+data NmcRRTlsa = NmcRRTlsa
                         { tlsMatchType  :: Int -- 0:exact 1:sha256 2:sha512
                         , tlsMatchValue :: String
                         , tlsIncSubdoms :: Int -- 1:enforce on subdoms 0:no
                         } deriving (Show, Eq)
 
-instance FromJSON NmcRRTls where
-        parseJSON (Array a) =
-                if length a == 3 then NmcRRTls
-                        <$> parseJSON (a ! 0)
-                        <*> parseJSON (a ! 1)
-                        <*> parseJSON (a ! 2)
-                else empty
-        parseJSON _ = empty
-
-instance Mergeable NmcRRTls where
+instance Mergeable NmcRRTlsa where
         merge _ b = b
 
 data NmcRRDs = NmcRRDs
@@ -134,8 +125,7 @@ instance FromJSON NmcRRDs where
 instance Mergeable NmcRRDs where
         merge _ b = b
 
-data NmcDom = NmcDom    { domService     :: Maybe [NmcRRService]
-                        , domIp          :: Maybe [String]
+data NmcDom = NmcDom    { domIp          :: Maybe [String]
                         , domIp6         :: Maybe [String]
                         , domTor         :: Maybe String
                         , domI2p         :: Maybe NmcRRI2p
@@ -148,20 +138,18 @@ data NmcDom = NmcDom    { domService     :: Maybe [NmcRRService]
                         , domNs          :: Maybe [String]
                         , domDelegate    :: Maybe String
                         , domImport      :: Maybe [String]
-                        , domMap         :: Maybe (Map String NmcDom)
+                        , domSubmap      :: Maybe (Map String NmcDom)
                         , domFingerprint :: Maybe [String]
-                        , domTls         :: Maybe (Map String
-                                                    (Map String [NmcRRTls]))
                         , domDs          :: Maybe [NmcRRDs]
-                        , domMx          :: Maybe [String] -- Synthetic
-                        , domSrv         :: Maybe [String] -- Synthetic
-                        , domTlsa        :: Maybe [String] -- Synthetic
+                        , domMx          :: Maybe [String]    -- Synthetic
+                        , domSrv         :: Maybe [NmcRRSrv]  -- Synthetic
+                        , domTlsa        :: Maybe [NmcRRTlsa] -- Synthetic
                         } deriving (Show, Eq)
 
 instance Default NmcDom where
   def = NmcDom Nothing Nothing Nothing Nothing Nothing Nothing Nothing
                Nothing Nothing Nothing Nothing Nothing Nothing Nothing
-               Nothing Nothing Nothing Nothing Nothing Nothing Nothing
+               Nothing Nothing Nothing Nothing Nothing
 
 instance FromJSON NmcDom where
         -- Wherever we expect a domain object, there may be a string
@@ -178,8 +166,7 @@ instance FromJSON NmcDom where
                               if all isDigit x then (read x :: Int) < 256
                               else False
         parseJSON (Object o) = NmcDom
-                <$> o .:? "service"
-                <*> o .:/ "ip"
+                <$> o .:/ "ip"
                 <*> o .:/ "ip6"
                 <*> o .:? "tor"
                 <*> o .:? "i2p"
@@ -192,18 +179,16 @@ instance FromJSON NmcDom where
                 <*> o .:/ "ns"
                 <*> o .:? "delegate"
                 <*> o .:/ "import"
-                <*> o .:? "map"
+                <*> makeSubmap o
                 <*> o .:/ "fingerprint"
-                <*> o .:? "tls"
                 <*> o .:? "ds"
-                <*> return Nothing -- domMx not parsed
-                <*> return Nothing -- domSrv not parsed
-                <*> return Nothing -- domTlsa not parsed
+                <*> makeMx o
+                <*> return Nothing -- domSrv created in subdomains
+                <*> return Nothing -- domTlsa created in subdomains
         parseJSON _ = empty
 
 instance Mergeable NmcDom where
-        merge sub dom = dom     { domService =     mergelm domService
-                                , domIp =          mergelm domIp
+        merge sub dom = dom     { domIp =          mergelm domIp
                                 , domIp6 =         mergelm domIp6
                                 , domTor =         choose  domTor
                                 , domI2p =         mergelm domI2p
@@ -216,9 +201,8 @@ instance Mergeable NmcDom where
                                 , domNs =          mergelm domNs
                                 , domDelegate =    mergelm domDelegate
                                 , domImport =      mergelm domImport
-                                , domMap =         mergelm domMap
+                                , domSubmap =      mergelm domSubmap
                                 , domFingerprint = mergelm domFingerprint
-                                , domTls =         mergelm domTls
                                 , domDs =          mergelm domDs
                                 , domMx =          mergelm domMx
                                 , domSrv =         mergelm domSrv
@@ -232,6 +216,3 @@ instance Mergeable NmcDom where
                 choose field = case field dom of
                         Nothing -> field sub
                         Just x  -> Just x
-
-mergeNmcDom :: NmcDom -> NmcDom -> NmcDom
-mergeNmcDom = merge

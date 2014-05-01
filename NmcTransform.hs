@@ -39,7 +39,7 @@ mergeIncl ::
   -> IO (Either String NmcDom)              -- ^ result with merged import
 mergeIncl queryOp depth base = do
   let
-    mbase = (expandSrv . splitSubdoms . mergeSelf) base
+    mbase = ({-expandSrv .-} splitSubdoms . mergeSelf) base
     base' = mbase {domDelegate = Nothing, domImport = Nothing}
   -- print base
   if depth <= 0 then return $ Left "Nesting of imports is too deep"
@@ -53,15 +53,15 @@ mergeIncl queryOp depth base = do
       sub <- queryNmcDom queryOp key
       case sub of
         Left  err  -> return $ Left err
-        Right sub' -> mergeIncl queryOp (depth - 1) $ sub' `mergeNmcDom` acc
+        Right sub' -> mergeIncl queryOp (depth - 1) $ sub' `merge` acc
 
 -- | If there is an element in the map with key "", merge the contents
 --   and remove this element. Do this recursively.
 mergeSelf :: NmcDom -> NmcDom
 mergeSelf base =
   let
-    map   = domMap base
-    base' = base {domMap = removeSelf map}
+    map   = domSubmap base
+    base' = base {domSubmap = removeSelf map}
     removeSelf Nothing    = Nothing
     removeSelf (Just map) = if size map' == 0 then Nothing else Just map'
       where map' = delete "" map
@@ -71,9 +71,9 @@ mergeSelf base =
       Just map' ->
         case lookup "" map' of
           Nothing  -> base'
-          Just sub -> (mergeSelf sub) `mergeNmcDom` base'
+          Just sub -> (mergeSelf sub) `merge` base'
         -- recursion depth limited by the size of the record
-
+{-
 -- | replace Service with Srv down in the Map
 expandSrv :: NmcDom -> NmcDom
 expandSrv base =
@@ -84,11 +84,11 @@ expandSrv base =
       Nothing -> base'
       Just sl -> foldr addSrvMx base' sl
         where
-          addSrvMx sr acc = sub1 `mergeNmcDom` acc
+          addSrvMx sr acc = sub1 `merge` acc
             where
-              sub1 = def { domMap = Just (singleton proto sub2)
+              sub1 = def { domSubmap = Just (singleton proto sub2)
                                  , domMx = maybemx}
-              sub2 = def { domMap = Just (singleton srvid sub3) }
+              sub2 = def { domSubmap = Just (singleton srvid sub3) }
               sub3 = def { domSrv = Just [srvStr] }
               proto = "_" ++ (srvProto sr)
               srvid = "_" ++ (srvName sr)
@@ -102,20 +102,20 @@ expandSrv base =
                    && srvPort sr == 25
                 then Just [(show (srvPrio sr)) ++ "\t" ++ (srvHost sr)]
                 else Nothing
-
+-}
 -- | Convert map elements of the form "subN...sub2.sub1.dom.bit"
 --   into nested map and merge it
 splitSubdoms :: NmcDom -> NmcDom
 splitSubdoms base =
   let
-    base' = base { domMap = Nothing }
+    base' = base { domSubmap = Nothing }
   in
-    case domMap base of
+    case domSubmap base of
       Nothing -> base'
-      Just sdmap -> (def { domMap = Just sdmap' }) `mergeNmcDom` base'
+      Just sdmap -> (def { domSubmap = Just sdmap' }) `merge` base'
         where
           sdmap' = foldrWithKey stow empty sdmap
-          stow fqdn sdom acc = insertWith mergeNmcDom fqdn' sdom' acc
+          stow fqdn sdom acc = insertWith merge fqdn' sdom' acc
             where
               (fqdn', sdom') =
                 nest (filter (/= "") (splitOnDots fqdn), sdom)
@@ -123,7 +123,7 @@ splitSubdoms base =
               nest ([], v)   = (fqdn, v) -- can split result be empty?
               nest ([k], v)  = (k, v)
               nest (k:ks, v) =
-                nest (ks, def { domMap = Just (singleton k v) })
+                nest (ks, def { domSubmap = Just (singleton k v) })
 
 -- | transfer some elements of `base` into `sub`, notably TLSA
 propagate :: NmcDom -> NmcDom -> NmcDom
@@ -140,7 +140,7 @@ normalizeDom dom = foldr id dom [ translateNormalizer
       Just ns  -> def { domNs = domNs dom, domEmail = domEmail dom }
     translateNormalizer dom = case domTranslate dom of
       Nothing  -> dom
-      Just tr  -> dom { domMap = Nothing }
+      Just tr  -> dom { domSubmap = Nothing }
 
 -- | Merge imports and Selfs and follow the maps tree to get dom
 descendNmcDom ::
@@ -156,7 +156,7 @@ descendNmcDom queryOp subdom base = do
       case base' of
         Left err     -> return base'
         Right base'' ->
-          case domMap base'' of
+          case domSubmap base'' of
             Nothing  -> return $ Right def
             Just map ->
               case lookup d map of

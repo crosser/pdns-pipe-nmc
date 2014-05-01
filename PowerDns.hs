@@ -127,7 +127,7 @@ pdnsOutXfr ver id gen name edom =
              , RRTypeDS, RRTypeMX, RRTypeSOA
              ]
     walkDom f acc name dom =
-      f name dom $ case domMap dom of
+      f name dom $ case domSubmap dom of
         Nothing -> acc
         Just dm ->
           foldrWithKey (\n d a -> walkDom f a (n ++ "." ++ name) d) acc dm
@@ -165,9 +165,27 @@ dotmail addr =
     "" -> aname ++ "."
     _  -> aname ++ "." ++ (tail adom) ++ "."
 
-dataRR RRTypeSRV   = justl domSrv
+dataRR RRTypeSRV   = \ _ _ dom ->
+  case domSrv dom of
+    Nothing  -> []
+    Just srvs -> map srvStr srvs
+      where
+        srvStr x = (show (srvPrio x)) ++ "\t"
+                ++ (show (srvWeight x)) ++ " "
+                ++ (show (srvPort x)) ++ " "
+                ++ (srvHost x)
+    
 dataRR RRTypeMX    = justl domMx
-dataRR RRTypeTLSA  = justl domTlsa
+dataRR RRTypeTLSA  = \ _ _ dom ->
+  case domTlsa dom of
+    Nothing  -> []
+    Just tlsas -> map tlsaStr tlsas
+      where
+        tlsaStr x = "(3 0 "
+                 ++ (show (tlsMatchType x)) ++ " "
+                 ++ (tlsMatchValue x) ++ ")"
+        -- tlsIncSubdoms is not displayed, it is used for `propagate`.
+
 dataRR RRTypeA     = justl domIp
 dataRR RRTypeAAAA  = justl domIp6
 dataRR RRTypeCNAME = justv domAlias
