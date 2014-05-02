@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
@@ -21,9 +22,11 @@ import Data.Map.Lazy (Map, empty, lookup, insert, delete, size)
 import Data.Aeson (encode, decode, Value(..))
 import Network.HTTP.Types
 import Network.HTTP.Client
+#if MIN_VERSION_data_default(0,5,3)
 import Data.Default.Class (def)
--- if you have data-default-0.5.1 import this instead of Data.Default.Class:
--- import Data.Default (def)
+#else
+import Data.Default (def)
+#endif
 
 import JsonRpcClient
 import Config
