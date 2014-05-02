@@ -9,6 +9,12 @@ echo "Making $file.$sfx"
 #           -optl-pthread -pgml g++ "$file"
 # but cannot make it "only glibc is shared". And with static glibc,
 # getaddrinfo does not work on systems with different glibc.
+#
+# To build with ghc, run this:
+#ghc --make -optP-include -optPdist/build/autogen/cabal_macros.h "$file"
+# but it is still necessary to run `cabal configure` before to generate
+# the file `dist/build/autogen/cabal_macros.h`.
+
 cabal build
 case $? in
 0) ;;

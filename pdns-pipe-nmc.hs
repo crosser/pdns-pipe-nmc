@@ -22,7 +22,7 @@ import Data.Map.Lazy (Map, empty, lookup, insert, delete, size)
 import Data.Aeson (encode, decode, Value(..))
 import Network.HTTP.Types
 import Network.HTTP.Client
-#if MIN_VERSION_data_default(0,5,3)
+#if MIN_VERSION_http_client(0,3,0)
 import Data.Default.Class (def)
 #else
 import Data.Default (def)
