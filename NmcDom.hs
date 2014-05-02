@@ -14,8 +14,10 @@ import Data.Char
 import Data.Text (Text, unpack)
 import Data.List (union)
 import Data.List.Split
-import Data.Vector ((!), length, singleton)
+import Data.Vector ((!), length)
+import qualified Data.Vector as V (singleton)
 import Data.Map (Map, unionWith)
+import qualified Data.Map as M (singleton, empty)
 import qualified Data.HashMap.Strict as H (lookup)
 import Data.Aeson
 import Data.Aeson.Types
@@ -31,22 +33,71 @@ import Data.Default.Class
 obj .:/ key = case H.lookup key obj of
                Nothing -> pure Nothing
                Just v  -> case v of
-                        String s -> parseJSON $ Array (singleton v)
+                        String s -> parseJSON $ Array (V.singleton v)
                         _        -> parseJSON v
 
+data IntRRService = IntRRService { isvName       :: String
+                                 , isvProto      :: String
+                                 , isvPrio       :: Int
+                                 , isvWeight     :: Int
+                                 , isvPort       :: Int
+                                 , isvHost       :: String
+                                 } deriving (Show, Eq)
+
+instance FromJSON IntRRService where
+        parseJSON (Array a) =
+                if length a == 6 then IntRRService
+                        <$> parseJSON (a ! 0)
+                        <*> parseJSON (a ! 1)
+                        <*> parseJSON (a ! 2)
+                        <*> parseJSON (a ! 3)
+                        <*> parseJSON (a ! 4)
+                        <*> parseJSON (a ! 5)
+                else empty
+        parseJSON _ = empty
+
 makeMx :: Object -> Parser (Maybe [String])
-makeMx o = return Nothing -- FIXME
-{-
+makeMx o =
   case H.lookup "service" o of
     Nothing          -> pure Nothing
-    Just (Array saa) -> return $ Just $ fmap mxStr $ filter mxMatch saa
-      where
-        mxMatch sa = (sa ! 0) == "smtp" && (sa ! 1) == "tcp" && (sa ! 4) == 25
-        mxStr sa = (sa ! 2) ++ "\t" ++ (sa ! 5)
-    _                -> empty
--}
+    Just (Array a) -> do
+      isvl <- parseJSON (Array a)
+      return $ Just $ map mxStr $ filter mxMatch isvl
+        where
+          mxMatch isv = isvName isv  == "smtp"
+                     && isvProto isv == "tcp"
+                     && isvPort isv  == 25
+          mxStr isv = (show (isvPrio isv)) ++ "\t" ++ (isvHost isv)
+    Just _ -> empty
+
 makeSubmap :: Object -> Parser (Maybe (Map String NmcDom))
-makeSubmap o = o .:? "map" -- FIXME
+makeSubmap o = ((.).(.)) merge merge <$> takeTls o <*> takeSrv o <*> takeMap o
+
+takeMap :: Object -> Parser (Maybe (Map String NmcDom))
+takeMap o = o .:? "map"
+
+takeSrv :: Object -> Parser (Maybe (Map String NmcDom))
+takeSrv o =
+  case H.lookup "service" o of
+    Nothing          -> pure Nothing
+    Just (Array a) -> do
+      isvl <- parseJSON (Array a)
+      return $ foldr addSrv (Just M.empty) isvl
+        where
+          addSrv isv acc = subm `merge` acc
+            where
+              subm = Just (M.singleton ("_" ++ isvProto isv) sub2)
+              sub2 = def { domSubmap =
+                             Just (M.singleton ("_" ++ isvName isv) sub3) }
+              sub3 = def { domSrv = Just [ NmcRRSrv (isvPrio isv)
+                                                    (isvWeight isv)
+                                                    (isvPort isv)
+                                                    (isvHost isv) ] }
+    Just _ -> empty
+
+-- takeTls is almost, but not quite, entirely unlike takeSrv
+takeTls :: Object -> Parser (Maybe (Map String NmcDom))
+takeTls o = o .:? "map" -- FIXME
 
 class Mergeable a where
         merge :: a -> a -> a -- bias towads second arg
