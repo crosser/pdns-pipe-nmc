@@ -74,7 +74,7 @@ makeSubmap :: Object -> Parser (Maybe (Map String NmcDom))
 makeSubmap o = ((.).(.)) merge merge <$> takeTls o <*> takeSrv o <*> takeMap o
 
 takeMap :: Object -> Parser (Maybe (Map String NmcDom))
-takeMap o = o .:? "map"
+takeMap o = o .:? "map" -- FIXME split over dots here
 
 takeSrv :: Object -> Parser (Maybe (Map String NmcDom))
 takeSrv o =
