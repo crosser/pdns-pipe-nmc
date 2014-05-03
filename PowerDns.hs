@@ -108,7 +108,7 @@ pdnsOutQ ver id gen name rrt edom =
     rrl = case rrt of
       RRTypeANY -> [ RRTypeSRV, RRTypeA, RRTypeAAAA, RRTypeCNAME
                    , RRTypeDNAME, RRTypeRP, RRTypeLOC, RRTypeNS
-                   , RRTypeDS, RRTypeMX -- SOA not included
+                   , RRTypeDS, RRTypeMX, RRTypeTLSA -- SOA not included
                    ]
       x         -> [x]
   in
@@ -124,7 +124,7 @@ pdnsOutXfr ver id gen name edom =
   let
     allrrs = [ RRTypeSRV, RRTypeA, RRTypeAAAA, RRTypeCNAME
              , RRTypeDNAME, RRTypeRP, RRTypeLOC, RRTypeNS
-             , RRTypeDS, RRTypeMX, RRTypeSOA
+             , RRTypeDS, RRTypeMX, RRTypeTLSA, RRTypeSOA
              ]
     walkDom f acc name dom =
       f name dom $ case domSubmap dom of

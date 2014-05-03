@@ -16,7 +16,7 @@ import Data.List (union)
 import Data.List.Split
 import Data.Vector ((!), length)
 import qualified Data.Vector as V (singleton)
-import Data.Map (Map, unionWith)
+import Data.Map (Map, unionWith, foldrWithKey)
 import qualified Data.Map as M (singleton, empty)
 import qualified Data.HashMap.Strict as H (lookup)
 import Data.Aeson
@@ -97,7 +97,25 @@ takeSrv o =
 
 -- takeTls is almost, but not quite, entirely unlike takeSrv
 takeTls :: Object -> Parser (Maybe (Map String NmcDom))
-takeTls o = o .:? "map" -- FIXME
+takeTls o =
+  case H.lookup "tls" o of
+    Nothing         -> pure Nothing
+    Just (Object t) ->
+      (parseJSON (Object t) :: Parser (Map String (Map String [NmcRRTlsa])))
+        >>= tmap2dmap
+          where
+            tmap2dmap :: Map String (Map String [NmcRRTlsa])
+                      -> Parser (Maybe (Map String NmcDom))
+                -- FIXME return parse error on invalid proto or port
+            tmap2dmap m1 = return $ foldrWithKey addprotoelem (Just M.empty) m1
+            addprotoelem k1 m2 acc = protoelem k1 m2 `merge` acc
+            protoelem k1 m2 = Just (M.singleton ("_" ++ k1) (pmap2dmap m2))
+            pmap2dmap m2 = foldrWithKey addportelem def m2
+            addportelem k2 v acc = portelem k2 v `merge` acc
+            portelem k2 v =
+              def { domSubmap = Just (M.singleton ("_" ++ k2)
+                                      def { domTlsa = Just v }) }
+    Just _ -> empty
 
 class Mergeable a where
         merge :: a -> a -> a -- bias towads second arg
@@ -152,6 +170,15 @@ data NmcRRTlsa = NmcRRTlsa
                         , tlsMatchValue :: String
                         , tlsIncSubdoms :: Int -- 1:enforce on subdoms 0:no
                         } deriving (Show, Eq)
+
+instance FromJSON NmcRRTlsa where
+        parseJSON (Array a) =
+                if length a == 3 then NmcRRTlsa
+                        <$> parseJSON (a ! 0)
+                        <*> parseJSON (a ! 1)
+                        <*> parseJSON (a ! 2)
+                else empty
+        parseJSON _ = empty
 
 instance Mergeable NmcRRTlsa where
         merge _ b = b
