@@ -78,8 +78,8 @@ takeMap o =
   case H.lookup "map" o of
     Nothing          -> pure Nothing
     Just (Object mo) -> do
-      unsplit <- (parseJSON (Object mo) :: Parser (Maybe (Map String NmcDom)))
-      let result = fmap splitup unsplit
+      raw <- (parseJSON (Object mo) :: Parser (Maybe (Map String NmcDom)))
+      let result = fmap splitup raw
       return result
         where
           splitup :: Map String NmcDom -> Map String NmcDom
@@ -87,12 +87,12 @@ takeMap o =
           stow fqdn sdom acc = M.insertWith merge fqdn' sdom' acc
             where
               (fqdn', sdom') = nest (filter (/= "") (splitOnDots fqdn), sdom)
-              splitOnDots s = splitOn "." s
-              nest ([], v)   = (fqdn, v) -- can split result be empty?
+              splitOnDots s  = splitOn "." s
+              nest ([], v)   = (fqdn, v) -- preserve "self" map entry
               nest ([k], v)  = (k, v)
               nest (k:ks, v) =
                 nest (ks, def { domSubmap = Just (M.singleton k v) })
-    _                -> empty
+    _ -> empty
 
 takeSrv :: Object -> Parser (Maybe (Map String NmcDom))
 takeSrv o =
