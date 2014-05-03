@@ -4,7 +4,6 @@ module NmcTransform ( seedNmcDom
 
 import Prelude hiding (lookup)
 import Data.ByteString.Lazy (ByteString)
-import Data.Text.Lazy (splitOn, pack, unpack)
 import Data.Map.Lazy (empty, lookup, delete, size, singleton
                      , foldrWithKey, insert, insertWith)
 import Control.Monad (foldM)
@@ -39,7 +38,7 @@ mergeIncl ::
   -> IO (Either String NmcDom)              -- ^ result with merged import
 mergeIncl queryOp depth base = do
   let
-    mbase = (splitSubdoms . mergeSelf) base
+    mbase = mergeSelf base
     base' = mbase {domDelegate = Nothing, domImport = Nothing}
   -- print base
   if depth <= 0 then return $ Left "Nesting of imports is too deep"
@@ -73,28 +72,6 @@ mergeSelf base =
           Nothing  -> base'
           Just sub -> (mergeSelf sub) `merge` base'
         -- recursion depth limited by the size of the record
-
--- | Convert map elements of the form "subN...sub2.sub1.dom.bit"
---   into nested map and merge it
-splitSubdoms :: NmcDom -> NmcDom
-splitSubdoms base =
-  let
-    base' = base { domSubmap = Nothing }
-  in
-    case domSubmap base of
-      Nothing -> base'
-      Just sdmap -> (def { domSubmap = Just sdmap' }) `merge` base'
-        where
-          sdmap' = foldrWithKey stow empty sdmap
-          stow fqdn sdom acc = insertWith merge fqdn' sdom' acc
-            where
-              (fqdn', sdom') =
-                nest (filter (/= "") (splitOnDots fqdn), sdom)
-              splitOnDots s = map unpack (splitOn (pack ".") (pack s))
-              nest ([], v)   = (fqdn, v) -- can split result be empty?
-              nest ([k], v)  = (k, v)
-              nest (k:ks, v) =
-                nest (ks, def { domSubmap = Just (singleton k v) })
 
 -- | transfer some elements of `base` into `sub`, notably TLSA
 propagate :: NmcDom -> NmcDom -> NmcDom

@@ -17,7 +17,7 @@ import Data.List.Split
 import Data.Vector ((!), length)
 import qualified Data.Vector as V (singleton)
 import Data.Map (Map, unionWith, foldrWithKey)
-import qualified Data.Map as M (singleton, empty)
+import qualified Data.Map as M (singleton, empty, insert, insertWith)
 import qualified Data.HashMap.Strict as H (lookup)
 import Data.Aeson
 import Data.Aeson.Types
@@ -74,7 +74,25 @@ makeSubmap :: Object -> Parser (Maybe (Map String NmcDom))
 makeSubmap o = ((.).(.)) merge merge <$> takeTls o <*> takeSrv o <*> takeMap o
 
 takeMap :: Object -> Parser (Maybe (Map String NmcDom))
-takeMap o = o .:? "map" -- FIXME split over dots here
+takeMap o =
+  case H.lookup "map" o of
+    Nothing          -> pure Nothing
+    Just (Object mo) -> do
+      unsplit <- (parseJSON (Object mo) :: Parser (Maybe (Map String NmcDom)))
+      let result = fmap splitup unsplit
+      return result
+        where
+          splitup :: Map String NmcDom -> Map String NmcDom
+          splitup x = foldrWithKey stow M.empty x
+          stow fqdn sdom acc = M.insertWith merge fqdn' sdom' acc
+            where
+              (fqdn', sdom') = nest (filter (/= "") (splitOnDots fqdn), sdom)
+              splitOnDots s = splitOn "." s
+              nest ([], v)   = (fqdn, v) -- can split result be empty?
+              nest ([k], v)  = (k, v)
+              nest (k:ks, v) =
+                nest (ks, def { domSubmap = Just (M.singleton k v) })
+    _                -> empty
 
 takeSrv :: Object -> Parser (Maybe (Map String NmcDom))
 takeSrv o =
