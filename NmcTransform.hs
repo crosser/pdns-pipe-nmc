@@ -39,7 +39,7 @@ mergeIncl ::
   -> IO (Either String NmcDom)              -- ^ result with merged import
 mergeIncl queryOp depth base = do
   let
-    mbase = ({-expandSrv .-} splitSubdoms . mergeSelf) base
+    mbase = (splitSubdoms . mergeSelf) base
     base' = mbase {domDelegate = Nothing, domImport = Nothing}
   -- print base
   if depth <= 0 then return $ Left "Nesting of imports is too deep"
@@ -73,36 +73,7 @@ mergeSelf base =
           Nothing  -> base'
           Just sub -> (mergeSelf sub) `merge` base'
         -- recursion depth limited by the size of the record
-{-
--- | replace Service with Srv down in the Map
-expandSrv :: NmcDom -> NmcDom
-expandSrv base =
-  let
-    base' = base { domService = Nothing }
-  in
-    case domService base of
-      Nothing -> base'
-      Just sl -> foldr addSrvMx base' sl
-        where
-          addSrvMx sr acc = sub1 `merge` acc
-            where
-              sub1 = def { domSubmap = Just (singleton proto sub2)
-                                 , domMx = maybemx}
-              sub2 = def { domSubmap = Just (singleton srvid sub3) }
-              sub3 = def { domSrv = Just [srvStr] }
-              proto = "_" ++ (srvProto sr)
-              srvid = "_" ++ (srvName sr)
-              srvStr =  (show (srvPrio sr)) ++ "\t"
-                     ++ (show (srvWeight sr)) ++ " "
-                     ++ (show (srvPort sr)) ++ " "
-                     ++ (srvHost sr)
-              maybemx =
-                if srvName sr == "smtp"
-                   && srvProto sr == "tcp"
-                   && srvPort sr == 25
-                then Just [(show (srvPrio sr)) ++ "\t" ++ (srvHost sr)]
-                else Nothing
--}
+
 -- | Convert map elements of the form "subN...sub2.sub1.dom.bit"
 --   into nested map and merge it
 splitSubdoms :: NmcDom -> NmcDom
