@@ -9,7 +9,7 @@ module NmcDom   ( NmcDom(..)
                 ) where
 
 import Prelude hiding (length)
-import Control.Applicative ((<$>), (<*>), empty, pure)
+import Control.Applicative ((<$>), (<*>), liftA2, empty, pure)
 import Data.Char
 import Data.Text (Text, unpack)
 import Data.List (union)
@@ -71,7 +71,8 @@ makeMx o =
     Just _ -> empty
 
 makeSubmap :: Object -> Parser (Maybe (Map String NmcDom))
-makeSubmap o = ((.).(.)) merge merge <$> takeTls o <*> takeSrv o <*> takeMap o
+makeSubmap o = takeTls o `fmerge` takeSrv o `fmerge` takeMap o
+  where fmerge = liftA2 merge
 
 takeMap :: Object -> Parser (Maybe (Map String NmcDom))
 takeMap o =
