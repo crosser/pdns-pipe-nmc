@@ -1,1 +1,1 @@
-{"service":[["smtp", "tcp", 0, 0, 25, "mail.host.com."]],"import":["d/extra2","d/extra3"],"ip":["1.2.3.4"],"alias":"extra1alias","map":{"mail":"1.1.1.1","www":"1.1.1.1","smtp.eu":{"ip6":"dead::0002"},"smtp..eu.":{"ip6":"dead::0003"},"eu":{"map":{"smtp":{"ip6":["dead::0001"]}}}}}
+{"service":[["smtp", "tcp", 0, 0, 25, "mail.host.com."]],"import":["d/extra2","d/extra3"],"ip":["1.2.3.4"],"alias":"extra1alias","map":{"mail":"1.1.1.1","www":"1.1.1.1","smtp.eu":{"ip6":"dead::0002"},"smtp.eu":{"ip6":"dead::0003"},"eu":{"map":{"smtp":{"ip6":["dead::0001"]}}}}}

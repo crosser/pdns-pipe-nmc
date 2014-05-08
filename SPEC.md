@@ -325,9 +325,9 @@ the current object.
 ```
 
 Note: When a key contains dots ".", it is converted to a nested
-map.  If empty element appears as a result of split, such as when
-a dot is at the beginning or at the end of the key, or there are
-consequitive dots, such elemets are ignored. For example,
+map. Empty elements in the result of split, such as when a dot is
+at the beginning or at the end of the key, or there are
+consequitive dots, are diagnosed as erroneous data.
 
 ```
 "map": { "www.uk": { "alias" : "www.example.co.uk" }

@@ -18,7 +18,7 @@ import Data.Vector ((!), length)
 import qualified Data.Vector as V (singleton)
 import Data.Map (Map, unionWith, foldrWithKey)
 import qualified Data.Map as M (singleton, empty, insert, insertWith)
-import qualified Data.HashMap.Strict as H (lookup)
+import qualified Data.HashMap.Strict as H (lookup, foldrWithKey)
 import Data.Aeson
 import Data.Aeson.Types
 import Data.Default.Class
@@ -78,21 +78,16 @@ takeMap :: Object -> Parser (Maybe (Map String NmcDom))
 takeMap o =
   case H.lookup "map" o of
     Nothing          -> pure Nothing
-    Just (Object mo) -> do
-      raw <- (parseJSON (Object mo) :: Parser (Maybe (Map String NmcDom)))
-      let result = fmap splitup raw
-      return result
-        where
-          splitup :: Map String NmcDom -> Map String NmcDom
-          splitup x = foldrWithKey stow M.empty x
-          stow fqdn sdom acc = M.insertWith merge fqdn' sdom' acc
-            where
-              (fqdn', sdom') = nest (filter (/= "") (splitOnDots fqdn), sdom)
-              splitOnDots s  = splitOn "." s
-              nest ([], v)   = (fqdn, v) -- preserve "self" map entry
-              nest ([k], v)  = (k, v)
-              nest (k:ks, v) =
-                nest (ks, def { domSubmap = Just (M.singleton k v) })
+    Just (Object mo) -> H.foldrWithKey addmapentry (pure (Just M.empty)) mo
+      where
+        addmapentry "" v acc = parseJSON v >>= inject acc ""
+        addmapentry k  v acc = nest (splitOn "." (unpack k)) v acc
+        nest []     v acc = empty -- does not happen as a result of splitOn
+        nest [""]   v acc = empty -- empty element of fqdn forbidden
+        nest [d]    v acc = parseJSON v >>= inject acc d
+        nest (d:ds) v acc =
+          nest ds v acc >>= (inject acc d) . (\r -> def { domSubmap = r })
+        inject acc d r = (fmap.fmap) (M.insertWith merge d r) acc
     _ -> empty
 
 takeSrv :: Object -> Parser (Maybe (Map String NmcDom))
