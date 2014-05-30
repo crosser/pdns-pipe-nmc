@@ -75,7 +75,10 @@ mergeSelf base =
 
 -- | transfer some elements of `base` into `sub`, notably TLSA
 propagate :: NmcDom -> NmcDom -> NmcDom
-propagate base sub = sub -- FIXME implement it
+propagate base sub = sub `merge` (pickglobals base)
+  where -- FIXME must do this on the map elements, not on the top level
+    pickglobals dom = def { domTlsa = fmap pickforcedtls (domTlsa dom) }
+    pickforcedtls = filter (\x -> tlsIncSubdoms x)
  
 -- | Presence of some elements require removal of some others
 normalizeDom :: NmcDom -> NmcDom

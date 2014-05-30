@@ -182,7 +182,7 @@ instance Mergeable NmcRRI2p where
 data NmcRRTlsa = NmcRRTlsa
                         { tlsMatchType  :: Int -- 0:exact 1:sha256 2:sha512
                         , tlsMatchValue :: String
-                        , tlsIncSubdoms :: Int -- 1:enforce on subdoms 0:no
+                        , tlsIncSubdoms :: Bool -- enforce on subdoms?
                         } deriving (Show, Eq)
 
 instance FromJSON NmcRRTlsa where
@@ -190,7 +190,10 @@ instance FromJSON NmcRRTlsa where
                 if length a == 3 then NmcRRTlsa
                         <$> parseJSON (a ! 0)
                         <*> parseJSON (a ! 1)
-                        <*> parseJSON (a ! 2)
+                        <*> case (a ! 2) of
+                              Number 0 -> return False
+                              Number 1 -> return True
+                              _        -> empty
                 else empty
         parseJSON _ = empty
 
