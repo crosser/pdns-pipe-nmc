@@ -58,7 +58,7 @@ data PdnsRequest = PdnsRequestQ
                    , localIpAddress     :: Maybe String
                    , ednsSubnetAddress  :: Maybe String
                    }
-                 | PdnsRequestAXFR Int
+                 | PdnsRequestAXFR Int (Maybe String)
                  | PdnsRequestPing
         deriving (Show)
 
@@ -82,7 +82,15 @@ pdnsParse ver s =
   in
     case words s of
       "PING":[]                 -> Right PdnsRequestPing
-      "AXFR":x:[]               -> Right (PdnsRequestAXFR (getInt x))
+      "AXFR":x:xs               ->
+        if ver < 4 then
+          case xs of
+            [] -> Right $ (PdnsRequestAXFR (getInt x)) Nothing
+            _  -> Left  $ "Extra arguments in AXFR (v 1-3): " ++ s
+        else
+          case xs of
+            [z] -> Right $ (PdnsRequestAXFR (getInt x)) (Just z)
+            _   -> Left  $ "Wrong arguments in AXFR (v 4+): " ++ s
       "Q":qn:"IN":qt:id:rip:xs  -> case rrType qt of
                                      RRTypeError e ->
                                        Left $ "Unrecognized RR type: " ++ e
@@ -146,9 +154,7 @@ formatRR ver id gen name dom rrtype =
               ++ "\t" ++ ttl ++ "\t" ++ (show id) ++ "\t" ++ x ++ "\n" ++ a)
         "" $ dataRR rrtype gen name dom
     where
-      v3ext = case ver of
-        3 -> "0\t1\t"
-        _ -> ""
+      v3ext = if ver >= 3 then "0\t1\t" else ""
       ttl = show 3600
 
 justl accessor _ _ dom = case accessor dom of

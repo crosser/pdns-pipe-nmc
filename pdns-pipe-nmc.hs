@@ -104,6 +104,7 @@ mainPdnsNmc = do
       ["HELO", "1"] -> return 1
       ["HELO", "2"] -> return 2
       ["HELO", "3"] -> return 3
+      ["HELO", "4"] -> return 4
       ["HELO",  x ] -> loopErr $ "unsupported ABI version " ++ (show x)
       _             -> loopErr $ "bad HELO " ++ (show s)
 
@@ -143,14 +144,26 @@ mainPdnsNmc = do
   -- end debug
   -}
               put $ stow qname (count, cache)
-            PdnsRequestAXFR xrq ->
-              case fetch xrq cache of
-                Nothing ->
-                  io $ putStr $
-                    pdnsReport ("AXFR for unknown id: " ++ (show xrq))
+            PdnsRequestAXFR xrq zid -> do
+  {-
+  -- debug
+              io $ putStrLn $ "LOG\tAXFR request id=" ++ (show xrq)
+                                ++ ", zone name: " ++ (show zid)
+  -- end debug
+  -}
+              let
+                czone = fetch xrq cache
+                zone = case zid of
+                  Nothing    -> czone
+                  Just qname -> Just qname
+                    -- if zid == czone then zid else Nothing -- paranoid
+              case zone of
                 Just qname ->
                   io $ queryDom (queryOpNmc cfg mgr xrq) qname
-                    >>= putStr . (pdnsOutXfr ver count gen qname)
+                     >>= putStr . (pdnsOutXfr ver count gen qname)
+                Nothing ->
+                  io $ putStr $ pdnsReport $ "AXFR cannot determine zone: "
+                                          ++ (show xrq) ++ ", " ++ (show zid)
             PdnsRequestPing -> io $ putStrLn "END"
 
   runStateT mainloop (0, empty) >> return ()
