@@ -2,11 +2,12 @@ module NmcTransform ( seedNmcDom
                     , descendNmcDom
                     ) where
 
-import Prelude hiding (lookup)
+import Prelude hiding (lookup, null)
 import Data.ByteString.Lazy (ByteString)
-import Data.Map.Lazy (empty, lookup, delete, size, singleton
+import Data.Map.Lazy (Map, empty, lookup, delete, null, singleton
                      , foldrWithKey, insert, insertWith)
 import Control.Monad (foldM)
+import Data.Maybe (fromMaybe)
 import Data.Aeson (decode)
 import Data.Default.Class (def)
 
@@ -62,7 +63,7 @@ mergeSelf base =
     map   = domSubmap base
     base' = base {domSubmap = removeSelf map}
     removeSelf Nothing    = Nothing
-    removeSelf (Just map) = if size map' == 0 then Nothing else Just map'
+    removeSelf (Just map) = if null map' then Nothing else Just map'
       where map' = delete "" map
   in
     case map of
@@ -76,10 +77,23 @@ mergeSelf base =
 -- | transfer some elements of `base` into `sub`, notably TLSA
 propagate :: NmcDom -> NmcDom -> NmcDom
 propagate base sub = sub `merge` (pickglobals base)
-  where -- FIXME must do this on the map elements, not on the top level
-    pickglobals dom = def { domTlsa = fmap pickforcedtls (domTlsa dom) }
-    pickforcedtls = filter (\x -> tlsIncSubdoms x)
- 
+  where
+    pickglobals dom = fromMaybe def (siftsubmap (siftsubmap taketlsa) dom)
+    siftsubmap f dom =
+      let
+        sdmap = fromMaybe empty (domSubmap dom)
+        sdmap' = foldrWithKey (\k x -> addifjust k (f x)) empty sdmap
+        addifjust k mdom acc = case mdom of
+          Nothing  -> acc
+          Just dom -> insert k dom acc -- dups are impossible here
+      in
+        if null sdmap' then Nothing else Just $ def { domSubmap = Just sdmap'}
+    taketlsa dom = case domTlsa dom of
+      Nothing   -> Nothing
+      Just tlsa -> case filter (\x -> tlsIncSubdoms x) tlsa of
+        []    -> Nothing
+        tlsa' -> Just $ def { domTlsa = Just tlsa' }
+
 -- | Presence of some elements require removal of some others
 normalizeDom :: NmcDom -> NmcDom
 normalizeDom dom = foldr id dom [ translateNormalizer
