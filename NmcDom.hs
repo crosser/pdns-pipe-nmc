@@ -120,7 +120,6 @@ takeTls o =
           where
             tmap2dmap :: Map String (Map String [NmcRRTlsa])
                       -> Parser (Maybe (Map String NmcDom))
-                -- FIXME return parse error on invalid proto or port
             tmap2dmap m1 = return $ foldrWithKey addprotoelem (Just M.empty) m1
             addprotoelem k1 m2 acc = protoelem k1 m2 `merge` acc
             protoelem k1 m2 = Just (M.singleton ("_" ++ k1) (pmap2dmap m2))
